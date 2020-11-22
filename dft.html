@@ -1,0 +1,424 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<style>
+#main {
+  margin:0;
+  padding:0;
+  float:left;
+  width:1024px;
+}
+#text {
+  margin-left:6px;
+  padding:0;
+  float:left;
+  width:256px;
+}
+p {
+  margin-top:0;
+  margin-bottom:8px;
+}
+</style>
+<script>
+
+function readURLquerystring() {
+  return readquerystring(window.location.search.slice(1));
+}
+
+function readquerystring(s) {
+  var d = {};
+  var i;
+  var j;
+  var r;
+  if (s) {
+    var sv = s.split('&');
+    for (i in sv) {
+      j = sv[i].indexOf('=');
+      if (j) {
+	if (j < 0) j = sv[i].length;
+        r = sv[i].slice(j+1);
+        r = unescape(r).split(',');
+        d[sv[i].slice(0,j)] = r.length == 1 ? r[0] : r;
+      }
+    }
+  }
+  return d;
+}
+
+/****************************************************************
+Show dft computation as movie. Frame:
+Components:
+  springy string; stretch one lap at a time
+  circle for wrapping; place 1 [real] at top rather than at right!? i to left
+  frequency graph (absolute value)
+  frequency graph (complex)
+  partial sum (at center of circle) (multiplied by 1/vN)
+Progress variable(s):
+  stretch factor s
+  time t
+Note that with large s, string whips around quite fast.
+Need an fft if computing one point at a time is too slow.
+Start with real-valued function, but do computation as if complex;
+then can do inverse successfully.
+Blackness of point on circle depends on how much of string covers it
+(number of laps at that point divided by stretch factor s)
+
+Controls: pause/resume/step, speed slider
+Parameters: N; function being transformed [default: ~vN periodic blips?]
+
+For drawing:
+  Math.PI
+  ctx.lineCap = "butt" or "round" or "square"
+  ctx.lineJoin = "bevel" or "round" or "miter"
+  ctx.lineWidth = linewidth in pixels
+  ctx.miterLimit (default 10)
+  ctx.fillStyle = color
+  ctx.strokeStyle = color
+
+  ctx.scale(x,y)
+  ctx.rotate(angleinradians)
+  ctx.translate(dx,dy)
+  ctx.transform(a,b,c,d,e,f)
+     [a c e] [x]
+     [b d f] [y]
+     [0 0 1] [1]
+  ctx.setTransform()
+
+  ctx.arc(x,y,r,sa,ea,ccw)   
+  ctx.fill()
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(x,y)
+  ctx.closePath()
+  ctx.lineTo(x,y)
+*****************************************************************/
+
+var oldt;
+var olds;
+var sumreal;
+var sumimag;
+
+function drawdft(real,imag,s,t) {
+  var a = t*s/N;    // s is negative for inverse dft
+  var i;
+  ctx.clearRect(0,0,cwidth,cheight);
+  ctx.save()
+  ctx.translate(cwidth/2,cheight/2);
+  ctx.scale(cwidth/N,cwidth/N);
+  ctx.lineWidth=N/cwidth;
+  ctx.beginPath();
+  ctx.arc(0,0,R,0,2*Math.PI);
+  ctx.strokeStyle = 'silver';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0,0,R,
+	  -.5*Math.PI,
+	  (2*(Math.abs(a)<1?a%1:Math.sign(a))-.5)*Math.PI,
+	  Math.sign(a)-1);
+  ctx.strokeStyle = 'black';
+  ctx.stroke();
+  for (i=0; i<=t; i++) {    // points on circle
+    ctx.save();
+    ctx.rotate((2*i*s/N)%2*Math.PI);
+    ctx.beginPath();
+    ctx.moveTo(0,-R);
+    ctx.lineTo(-R*imag[i],-R-R*real[i]);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.save()
+  var ta = (2*a-.5)%2*Math.PI;
+  ctx.translate(R*Math.cos(ta),R*Math.sin(ta));
+  ctx.rotate(ta);
+  ctx.beginPath();
+  ctx.moveTo(0,0);  
+  ctx.lineTo(0,N-t);
+  ctx.stroke();
+  ctx.translate(0,-t);
+  for (i=Math.floor(t+1); i<N; i++) {    // points on line
+    ctx.beginPath();
+    ctx.moveTo(0,i);
+    ctx.lineTo(R*real[i],i-R*imag[i]);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // compute sum
+  t = Math.floor(t);    // only care about integral t
+  if (!t) {
+    oldt = -1;
+    olds = s;
+    sumreal = 0;
+    sumimag = 0;
+  }
+  if (t!=oldt || s!=olds) {
+    if (s==olds && t==oldt+1) {
+      a = a%1*2*Math.PI;
+      sumreal += real[t]*Math.cos(a)+imag[t]*Math.sin(a);
+      sumimag += imag[t]*Math.cos(a)-real[t]*Math.sin(a);
+    } else {    // compute sums from scratch
+      sumreal = 0;
+      sumimag = 0;
+      for (i=0; i<=t; i++) {
+	a = s*i/N%1*2*Math.PI;
+	sumreal += real[i]*Math.cos(a)+imag[i]*Math.sin(a);
+	sumimag += imag[i]*Math.cos(a)-real[i]*Math.sin(a);
+      }
+    }
+  }
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.lineTo(-RovN*sumimag,-RovN*sumreal);
+  ctx.stroke();
+  oldt = t;
+  olds = s;
+  ctx.restore();  
+}
+
+function setst(s,t) {
+  document.getElementById('s').value = Object.is(s,-0) ? '-0' : s;
+  document.getElementById('t').value = t;
+}
+
+function news(s) {
+  if (pausing) {
+    t = document.getElementById('t').value;
+    drawdft(real,imag,1*s,1*t);
+  }
+}
+
+function newt(t) {
+  if (pausing) {
+    s = document.getElementById('s').value;
+    drawdft(real,imag,1*s,1*t);
+  }
+}
+
+function movie(rev) {
+  stop();
+  s = rev ? -0 : 0;
+  t = 0;
+  olds = s;
+  oldt = t-1;
+  sumreal = 0;
+  sumimag = 0;
+  setst(s,t);
+  function moviestep() {
+    if (pausing) return;
+    s = 1*document.getElementById('s').value;
+    t = 1*document.getElementById('t').value;
+    drawdft(real,imag,s,t);
+    if (++t >= N) {
+      t = 0;
+      if ((s+=Math.sign(1/s)) >= N) stop();
+    }
+    setst(s,t);
+  }
+  document.getElementById('prb').disabled = false;
+  pausing = false;
+  timer = setInterval(moviestep,1);
+}  
+
+var cwidth = 1024;    // should be 2piR, but we're stretching anyway
+var cheight = 512;    // for main diagram
+var pheight = 256;    // for plot
+
+var N = 1024;    // number of points
+var R = N/2/Math.PI;
+var RovN = R/Math.sqrt(N);
+var s = 0;    // stretch factor, increments as we compute frequency graph
+var t = 0;    // time, increments as string wraps; tangent point is ts/N
+
+var real = [];    // array of real parts
+var imag = [];    // array of imag parts
+
+var timer;
+var pausing;
+
+var canvas;
+var ctx;
+
+var plot;
+var ptx;
+
+function pause() {if (timer) pausing = !pausing;}
+
+function stop() {
+  timer = clearInterval(timer);
+  pausing = true;
+  document.getElementById('prb').disabled = true;
+  olds = 0;
+  oldt = -1;
+  sumreal = 0;
+  sumimag = 0;
+}
+
+function init() {
+  plot = document.getElementById('plot');
+  plot.width = cwidth;
+  plot.height = pheight;
+  ptx = plot.getContext('2d');
+  ptx.lineCap = 'round';
+  ptx.lineJoin = 'round';
+  canvas = document.getElementById('graph');
+  canvas.width = cwidth;
+  canvas.height = cheight;
+  ctx = canvas.getContext('2d');
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  document.getElementById('s').max=N-1;
+  document.getElementById('s').min=1-N;
+  document.getElementById('t').max=N-1;
+  document.getElementById('d').max=N-1;
+  document.getElementById('o').min=1-N;
+  document.getElementById('o').max=N-1;
+  var d = readURLquerystring();
+  var period = d.period;
+  var offset = d.offset;
+  initarrays(period,offset);
+};
+
+function intmod(a,b) {
+  b = Math.abs(b);
+  a -= Math.floor(a/b)*b
+  var r = a%b;
+  if (2*r > b) r -= b;
+  return Math.floor(r+.5);
+}
+
+function inito(o) {
+  initarrays(document.getElementById('d').value,o);
+}
+
+function initarrays(d,o) {
+  stop()
+  d = 1*d || Math.round(Math.sqrt(N));
+  var n = Math.floor((N-1)/d);   // one less than how many fit
+  o = (o||o==0) ? 1*o : n ? (N-1-n*d)/2 : N/2;
+  document.getElementById('d').value = d;
+  document.getElementById('o').value = o;
+  var i;
+  for (i=0; i<N; i++) {
+    real[i] = 0;
+    imag[i] = 0;
+  }
+  var x = 1/Math.sqrt(++n);    // normalized value
+  for (i=0; i<n; i++) real[Math.round(o+i*d)%N] = x;
+  plotcomplex();
+}
+
+function plotcomplex() {
+  // alternative: use color to indicate phase
+  ptx.clearRect(0,0,cwidth,pheight);
+  ptx.save()
+  ptx.translate(0,pheight/2);
+  ptx.scale(cwidth/N,cwidth/N);
+  ptx.lineWidth = N/cwidth;
+  ptx.beginPath();
+  ptx.moveTo(0,0);
+  ptx.lineTo(N,0);
+  ptx.strokeStyle='silver';
+  ptx.stroke();
+  ptx.beginPath();
+  for (var i=0; i<N; i++) {
+    ptx.moveTo(i,0);
+    ptx.lineTo(i-R*imag[i],-R*real[i]);
+  }
+  ptx.strokeStyle='black';
+  ptx.stroke();
+  ptx.restore();
+}
+
+function bit_reverse(x,l) {for (y=0; l--; x>>=1)  y = (y<<1)|(x&1); return y;}
+
+function dft(R,I,rev) {    // in-place DFT
+  var N = R.length;
+  var l = Math.log2(N);
+  var i,j,k,n;
+  var t,x,y;
+  var wi,wr;
+  for (i=0; i<N; i++) {
+    j = bit_reverse(i,l);
+    if (i<j) {
+      var t = R[i];
+      R[i] = R[j];
+      R[j] = t;
+      t = I[i];
+      I[i] = I[j];
+      I[j] = t;
+    }
+  }
+  for (i=0; i<l; i++) {
+    n = 1<<i;
+    for (j=0; j<n; j++) {
+      wr = Math.cos(Math.PI*j/n);
+      wi = Math.sin(Math.PI*j/n);
+      if (!rev) wi = -wi;
+      for (k=j; k<N; k+=n<<1) {
+	x = R[k+n]*wr-I[k+n]*wi;
+	y = I[k+n]*wr+R[k+n]*wi;
+	t = R[k]-x;
+	R[k] += x;
+	R[k+n] = t;
+	t = I[k]-y;
+	I[k] += y;
+	I[k+n] = t;
+      }
+    }
+  }
+  var vN = Math.sqrt(N);
+  for (i=0; i<N; i++) {
+    R[i] /= vN;
+    I[i] /= vN;
+  }
+}
+
+function dodft(rev) {
+  stop();
+  dft(real,imag,rev);
+  plotcomplex();
+}
+
+</script>
+</head>
+<body onload='init()'>
+ <div id='main'>
+  <canvas id='plot'></canvas>
+  <br>
+  <label for='d'>period:</label>
+  <input id='d' type='number' min='1' step='any'
+	 title='Choose period for above graph; sets default offset'
+	 onChange='initarrays(1*this.value)'>&nbsp;
+  <label for='o'>offset:</label>
+  <input id='o' type='number' step='any'
+	 title='Choose offset of first nonzero in above graph'
+	 onChange='inito(this.value)'>&nbsp;
+  <button type='button' title='Click to perform FFT on above graph'
+	  onClick='dodft()'>FwdDFT</button>&nbsp;
+  <button type='button' title='Click to perform Inverse FFT on above graph'
+	  onClick='dodft(true)'>InvDFT</button>&nbsp;
+  <button type='button' title='Click for animation of DFT computation'
+	  onClick='movie()'>Animated FwdDFT</button>&nbsp;
+  <button type='button' title='Click for animation of Inverse DFT computation'
+	  onClick='movie(true)'>Animated InvDFT</button>&nbsp;
+  <label for='s'><i>s</i> (stretch):</label>
+  <input id='s' type='number' step='1' onChange='news(this.value)'
+	 title='Choose stretch factor for frame of DFT animation'>&nbsp;
+  <label for='t'><i>t</i>:</label>
+  <input id='t' type='number' step='1' min='0' onChange='newt(this.value)'
+	 title='Choose t value for frame of DFT animation'>&nbsp;
+  <button id='prb' type='button' onClick='pause()' disabled
+	  title='Pause or Resume DFT animation'>Pause/Resume</button>
+  <br>
+  <canvas id='graph'></canvas>
+ </div>
+ <div id='text'>
+  <p>This is a demonstration of Discrete Fourier Transforms (DFTs). A DFT converts an array of data points (indexed by <i>t</i>) into an equal-length array of frequency amplitudes (indexed by <i>s</i>), or vice versa.</p>
+  <p>The initial array for this demonstration is a sequence of 1024 0s and 1s, with successive 1s starting at <i>t</i> = <i>offset</i> spaced <i>period</i> apart. The data points are then scaled (<i>normalized</i>) so that the sum of their squared absolute values is 1. The array is graphed at the top, with spikes for the nonzero values.
+  <p>You can select the period, which will update the array, with the offset chosen so that the spikes are more-or-less symmetrically arranged. You can then change the offset if you want an asymmetrical arrangement. The period and/or offset can also be specified in the querystring.</p>
+  <p>You can replace the array with its DFT or inverse DFT by clicking FwdDFT or InvDFT, respectively. The transformed array will still be normalized. With the default initial array, the transformed array will contain solely real values, but typically, data points are complex numbers. We&rsquo;ve chosen to show real values as vertical spikes, with up being positive, and complex values as oblique spikes, with leftward being the +<i>i</i> direction.</p>
+  <p>While a DFT is normally computed efficiently by a Fast Fourier Transform (FFT), we animate the equivalent intuitive (but much slower) computation, where it is easy to see how values reinforce or interfere to fortify just those <i>s</i> values that correspond to frequencies present in the data. For a given <i>s</i>, we stretch the starting graph around a circle so that it wraps <i>s</i> times, adding up (as vectors) the spikes now spread around the circle. We show the accumulating vector sum, normalized by dividing by the square root of the total number of data points, as a vector from the origin. Click Animated FwdDFT or Animated InvDFT to see the animation, or select an <i>s</i> and <i>t</i> to show a single frame. The sign of <i>s</i> indicates FwdDFT (+) or InvDFT (&minus;). Set <i>t</i> to 1023 to show the fully wrapped graph.</p>
+ </div>
+</body>
+</html>
