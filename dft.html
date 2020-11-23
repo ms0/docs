@@ -126,15 +126,15 @@ function drawdft(real,imag,s,t) {
 	  Math.sign(a)-1);
   ctx.strokeStyle = 'black';
   ctx.stroke();
+  ctx.beginPath();
   for (i=0; i<=t; i++) {    // points on circle
     ctx.save();
     ctx.rotate((2*i*s/N)%2*Math.PI);
-    ctx.beginPath();
     ctx.moveTo(0,-R);
-    ctx.lineTo(-R*imag[i],-R-R*real[i]);
-    ctx.stroke();
+    ctx.lineTo(-imag[i],-R-real[i]);
     ctx.restore();
   }
+  ctx.stroke();
   ctx.save()
   var ta = (2*a-.5)%2*Math.PI;
   ctx.translate(R*Math.cos(ta),R*Math.sin(ta));
@@ -144,12 +144,12 @@ function drawdft(real,imag,s,t) {
   ctx.lineTo(0,N-t);
   ctx.stroke();
   ctx.translate(0,-t);
+  ctx.beginPath();
   for (i=Math.floor(t+1); i<N; i++) {    // points on line
-    ctx.beginPath();
     ctx.moveTo(0,i);
-    ctx.lineTo(R*real[i],i-R*imag[i]);
-    ctx.stroke();
+    ctx.lineTo(real[i],i-imag[i]);
   }
+  ctx.stroke();
   ctx.restore();
   // compute sum
   t = Math.floor(t);    // only care about integral t
@@ -176,7 +176,7 @@ function drawdft(real,imag,s,t) {
   }
   ctx.beginPath();
   ctx.moveTo(0,0);
-  ctx.lineTo(-RovN*sumimag,-RovN*sumreal);
+  ctx.lineTo(-sumimag/vN,-sumreal/vN);
   ctx.stroke();
   oldt = t;
   olds = s;
@@ -229,7 +229,7 @@ var pheight = 256;    // for plot
 
 var N = 1024;    // number of points
 var R = N/2/Math.PI;
-var RovN = R/Math.sqrt(N);
+var vN = Math.sqrt(N);
 var s = 0;    // stretch factor, increments as we compute frequency graph
 var t = 0;    // time, increments as string wraps; tangent point is ts/N
 
@@ -310,7 +310,7 @@ function initarrays(d,o) {
     real[i] = 0;
     imag[i] = 0;
   }
-  var x = 1/Math.sqrt(n);    // normalized value
+  var x = R/Math.sqrt(n);    // normalized value
   for (i=0; i<n; i++) real[(roundsymmetric(o+i*d-N/2)+N/2)%N] = x;
   plotcomplex();
   var s = document.getElementById('s').value;
@@ -333,7 +333,7 @@ function plotcomplex() {
   ptx.beginPath();
   for (var i=0; i<N; i++) {
     ptx.moveTo(i,0);
-    ptx.lineTo(i-R*imag[i],-R*real[i]);
+    ptx.lineTo(i-imag[i],-real[i]);
   }
   ptx.strokeStyle='black';
   ptx.stroke();
