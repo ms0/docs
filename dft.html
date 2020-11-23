@@ -19,6 +19,10 @@
 p {
   margin-top:0;
   margin-bottom:8px;
+  font-size:12px;
+}
+input {
+  width:4em;
 }
 </style>
 <script>
@@ -101,9 +105,12 @@ var sumreal;
 var sumimag;
 
 function drawdft(real,imag,s,t) {
+  ctx.clearRect(0,0,cwidth,cheight);
+  if (s==='' || t==='') return;
+  s = 1*s;
+  t = 1*t;
   var a = t*s/N;    // s is negative for inverse dft
   var i;
-  ctx.clearRect(0,0,cwidth,cheight);
   ctx.save()
   ctx.translate(cwidth/2,cheight/2);
   ctx.scale(cwidth/N,cwidth/N);
@@ -182,17 +189,13 @@ function setst(s,t) {
 }
 
 function news(s) {
-  if (pausing) {
-    t = document.getElementById('t').value;
-    drawdft(real,imag,1*s,1*t);
-  }
+  var t = document.getElementById('t').value;
+  if (pausing) drawdft(real,imag,s,t);
 }
 
 function newt(t) {
-  if (pausing) {
-    s = document.getElementById('s').value;
-    drawdft(real,imag,1*s,1*t);
-  }
+  var s = document.getElementById('s').value;
+  if (pausing) drawdft(real,imag,s,t);
 }
 
 function movie(rev) {
@@ -291,11 +294,15 @@ function inito(o) {
   initarrays(document.getElementById('d').value,o);
 }
 
+function roundsymmetric(x) {
+  return x < 0 ? -Math.round(-x) : Math.round(x);
+}
+
 function initarrays(d,o) {
   stop()
   d = 1*d || Math.round(Math.sqrt(N));
-  var n = Math.floor((N-1)/d);   // one less than how many fit
-  o = (o||o==0) ? 1*o : n ? (N-1-n*d)/2 : N/2;
+  var n = Math.max(1,Math.round(N/d));
+  o = (o||o==0) ? 1*o : N/2-(n-1)/2*d;
   document.getElementById('d').value = d;
   document.getElementById('o').value = o;
   var i;
@@ -303,9 +310,12 @@ function initarrays(d,o) {
     real[i] = 0;
     imag[i] = 0;
   }
-  var x = 1/Math.sqrt(++n);    // normalized value
-  for (i=0; i<n; i++) real[Math.round(o+i*d)%N] = x;
+  var x = 1/Math.sqrt(n);    // normalized value
+  for (i=0; i<n; i++) real[(roundsymmetric(o+i*d-N/2)+N/2)%N] = x;
   plotcomplex();
+  var s = document.getElementById('s').value;
+  var t = document.getElementById('t').value;
+  drawdft(real,imag,s,t);
 }
 
 function plotcomplex() {
@@ -416,9 +426,10 @@ function dodft(rev) {
  <div id='text'>
   <p>This is a demonstration of Discrete Fourier Transforms (DFTs). A DFT converts an array of data points (indexed by <i>t</i>) into an equal-length array of frequency amplitudes (indexed by <i>s</i>), or vice versa.</p>
   <p>The initial array for this demonstration is a sequence of 1024 0s and 1s, with successive 1s starting at <i>t</i> = <i>offset</i> spaced <i>period</i> apart. The data points are then scaled (<i>normalized</i>) so that the sum of their squared absolute values is 1. The array is graphed at the top, with spikes for the nonzero values.
-  <p>You can select the period, which will update the array, with the offset chosen so that the spikes are more-or-less symmetrically arranged. You can then change the offset if you want an asymmetrical arrangement. The period and/or offset can also be specified in the querystring.</p>
-  <p>You can replace the array with its DFT or inverse DFT by clicking FwdDFT or InvDFT, respectively. The transformed array will still be normalized. With the default initial array, the transformed array will contain solely real values, but typically, data points are complex numbers. We&rsquo;ve chosen to show real values as vertical spikes, with up being positive, and complex values as oblique spikes, with leftward being the +<i>i</i> direction.</p>
-  <p>While a DFT is normally computed efficiently by a Fast Fourier Transform (FFT), we animate the equivalent intuitive (but much slower) computation, where it is easy to see how values reinforce or interfere to fortify just those <i>s</i> values that correspond to frequencies present in the data. For a given <i>s</i>, we stretch the starting graph around a circle so that it wraps <i>s</i> times, adding up (as vectors) the spikes now spread around the circle. We show the accumulating vector sum, normalized by dividing by the square root of the total number of data points, as a vector from the origin. Click Animated FwdDFT or Animated InvDFT to see the animation, or select an <i>s</i> and <i>t</i> to show a single frame. The sign of <i>s</i> indicates FwdDFT (+) or InvDFT (&minus;). Set <i>t</i> to 1023 to show the fully wrapped graph.</p>
+  <p>You can select the period, which will update the array using an offset picked to arrange the spikes symmetrically. You can then change the offset if you want an asymmetrical arrangement. The period and/or offset can also be specified in the querystring.</p>
+  <p>You can replace the array with its DFT or inverse DFT by clicking FwdDFT or InvDFT, respectively. The transformed array will still be normalized. With a symmetrical initial array, the transformed array will contain solely real values, but, in general, data points are complex numbers. We&rsquo;ve chosen to show real values as vertical spikes, with up being positive, and complex values as oblique spikes, with leftward being the +<i>i</i> direction.</p>
+  <p>While a DFT is normally computed efficiently by a Fast Fourier Transform (FFT), we animate the equivalent intuitive (but much slower) computation, showing how values reinforce or interfere to fortify just those <i>s</i> values that correspond to frequencies present in the data. For a given <i>s</i>, we stretch the starting graph around a unit circle so that it wraps <i>s</i> times, adding up (as vectors) the spikes now spread around the circle. We show the accumulating vector sum, normalized by dividing by 32 (the square root of 1024, the number of data points), as a vector from the center. Again, +1 is up and +<i>i</i> is left.</p>
+<p>Click Animated FwdDFT or Animated InvDFT to see the animation, or select an <i>s</i> and <i>t</i> to show a single frame. The sign of <i>s</i> indicates FwdDFT (+) or InvDFT (&minus;). Set <i>t</i> to 1023 to show the fully wrapped graph.</p>
  </div>
 </body>
 </html>
