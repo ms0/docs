@@ -22,7 +22,7 @@ p {
   font-size:12px;
 }
 input {
-  width:4em;
+  width:5em;
 }
 </style>
 <script>
@@ -311,7 +311,7 @@ function initarrays(d,o) {
     imag[i] = 0;
   }
   var x = R/Math.sqrt(n);    // normalized value
-  for (i=0; i<n; i++) real[(roundsymmetric(o+i*d-N/2)+N/2)%N] = x;
+  for (i=0; i<n; i++) real[roundsymmetric((o+i*d)%N-N/2)+N/2] = x;
   plotcomplex();
   var s = document.getElementById('s').value;
   var t = document.getElementById('t').value;
@@ -412,7 +412,7 @@ function dodft(rev) {
 	  onClick='movie()'>Animated FwdDFT</button>&nbsp;
   <button type='button' title='Click for animation of Inverse DFT computation'
 	  onClick='movie(true)'>Animated InvDFT</button>&nbsp;
-  <label for='s'><i>s</i> (stretch):</label>
+  <label for='s'><i>s</i>(tretch):</label>
   <input id='s' type='number' step='1' onChange='news(this.value)'
 	 title='Choose stretch factor for frame of DFT animation'>&nbsp;
   <label for='t'><i>t</i>:</label>
