@@ -9,4 +9,6 @@ gmovie.pdf is a description and frame-by-frame movie of Grover's algorithm
 
 math.pdf is the unabridged math supplement to Network Security: Private Communication in a Public World
 
+quantum.odp is a nontechnical slideshow on quantum computing
+
 secretsharing.html is a slightly interactive tutorial slide show on secret sharing
