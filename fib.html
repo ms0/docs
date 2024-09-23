@@ -1,0 +1,226 @@
+<head>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+<script>
+var cve;    // canvas element for line12
+var cva;    // canvas element for animation
+var cvs;    // canvas element for squares
+var ctx;    // context for line12
+var cta;    // context for animation
+var cts;    // context for squares
+var fiba;
+var fibx;
+
+var cwps=12;             // point size
+var cwfigwid=7;          // figure width
+var cwr=2;               // radius of dots
+var cwwmarg=cwfigwid;    // horizontal margins
+var clength=800;         // length of line
+var sqw=55;
+var sqh=34;
+var cwidth=clength+2*cwwmarg;  // width of canvas
+var cheight=2*(cwr+cwps);      // height of canvas
+var swidth=sqw+2*cwwmarg;
+var sheight=sqh+2*cwr;
+
+var timer;
+var ticker; // tick count for timer
+
+var phi = (1+Math.sqrt(5))/2;
+
+function init() {
+  cve = document.getElementById("line12");
+  cva = document.getElementById("animation");
+  cvs = document.getElementById("squares");
+  cva.width = cve.width = cwidth;
+  cva.height = cve.height = cheight;
+  cvs.width = swidth;
+  cvs.height = sheight;
+  ctx = cve.getContext('2d');
+  cta = cva.getContext('2d');
+  cts = cvs.getContext('2d');
+  ticker = 0;
+  drawframe();
+  drawfibs(5,0);
+  drawsquares();
+}
+  
+function pn(n,dt) {
+  plotfib();
+  nextfib(fibx);
+  if (--n > 0) setTimeout(pn,dt,n,dt);
+}
+
+function drawfibs(n,dt) {
+  ctx.clearRect(0,0,cwidth,cheight);
+  ctx.strokeStyle='black';
+  ctx.fillStyle='black';
+  ctx.lineWidth=.5;
+  ctx.beginPath();
+  ctx.moveTo(cwwmarg,cwr);
+  ctx.lineTo(cwwmarg+clength,cwr);
+  ctx.stroke();
+  ctx.font = cwps+"px Arial";
+  fibx=[1,1];
+  setTimeout(pn,dt,n,dt);
+}
+
+function nextfib(f) {
+  var t = f[1];
+  f[1] += f[0];
+  f[0] = t;
+}
+
+function plotfib() {
+  var r = fibx[1]/fibx[0];
+  var t = fibx[1]+'';
+  var x = clength*(r-1)+cwwmarg;
+  if (t.length<2) {
+    ctx.fillText(t,x-t.length*cwfigwid/2,cwps+2*cwr);
+    if (fibx[0]>1) {
+      t = '_'.repeat(t.length);
+      ctx.fillText(t,x-t.length*cwfigwid/2,cwps+2*cwr);
+      t = fibx[0]+'';
+      ctx.fillText(t,x-t.length*cwfigwid/2,2*(cwps+cwr));
+    }
+  }
+  if (t.length>2) {
+    var s = fibx[0]/(fibx[1]-fibx[0]);
+    var y = clength*(s-1)+cwwmarg;
+    ctx.beginPath();
+    ctx.arc(y,cwr,cwr,0,Math.PI*2,true);    
+    ctx.closePath();
+    ctx.fillStyle='white';
+    ctx.fill();
+    ctx.fillStyle='red';
+  }
+  ctx.beginPath();
+  ctx.arc(x,cwr,cwr,0,Math.PI*2,true);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function animatefibs() {
+  if (timer) {
+    timer = clearInterval(timer);
+  } else {
+    ticker = -20;
+    timer = setInterval(drawframe,25);
+  }
+}
+
+function drawframe() {
+  var scale = ticker > 0 ? (1+1/128)**ticker : 1;
+  var r;      // ratio
+  var c=0;    // count of in-frame points
+  var x;
+  var t;
+  var a=[];
+  ticker++;
+  fiba=[1,1];
+  cta.clearRect(0,0,cwidth,cheight);
+  cta.strokeStyle='black';
+  cta.fillStyle='black';
+  cta.lineWidth=.5;
+  cta.beginPath();
+  cta.moveTo(cwwmarg,cwr);
+  cta.lineTo(cwwmarg+clength,cwr);
+  cta.stroke();
+  cta.font = cwps+"px Arial";
+  while (1) {
+    r = (fiba[1]/fiba[0]-phi)*scale+phi-1;
+    if (Math.abs(r-.5) <= .5) {
+      a[c++] = x = r*clength+cwwmarg;
+      cta.beginPath();
+      cta.arc(x,cwr,cwr,0,Math.PI*2,true);
+      cta.closePath();
+      cta.fill();
+      t = fiba[1]+'';
+      if (c < 2 || Math.abs(a[c-1]-a[c-2]) > t.length*cwfigwid+cwr) {
+	cta.fillText(t,x-t.length*cwfigwid/2,cwps+2*cwr);
+	if (fiba[0]>1) {
+	  t = '_'.repeat(t.length);
+	  cta.fillText(t,x-t.length*cwfigwid/2,cwps+2*cwr);
+	  t = fiba[0]+'';
+	  cta.fillText(t,x-t.length*cwfigwid/2,2*(cwps+cwr));
+	}
+      }
+//      if (t.length > 3) timer = clearInterval(timer);
+    }
+    if (c > 5) {
+      cta.fillStyle='red';
+      cta.fill();
+      break;
+    }
+    nextfib(fiba);
+  }
+}
+
+function drawsquares() {
+  cts.clearRect(0,0,swidth,sheight);
+  cts.lineWidth=.5;
+  cts.fillStyle='black';
+  cts.strokeStyle='black';
+  cts.strokeRect(cwwmarg,cwr,sqw,sqh);
+  cts.strokeRect(cwwmarg,cwr,sqh,sqh);
+}
+</script>
+<style>
+span {
+  text-decoration:underline;
+  cursor:context-menu;
+}
+</style>
+</head>
+<body onload="init()">
+<p>Fi had just learned to add. Her parents wouldn't let her have any more screen time, so she was really, really bored. She mindlessly decided to do some addition problems...</p>
+<table>
+  <tr><td>0</td><td>+</td><td>1</td><td>=</td><td>1</td></tr>
+  <tr><td></td><td></td><td>1</td><td>+</td><td>1</td><td>=</td><td>2</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td>1</td><td>+</td><td>2</td><td>=</td><td>3</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td>2</td><td>+</td><td>3</td><td>=</td><td>5</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>3</td><td>+</td><td>5</td><td>=</td><td>8</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5</td><td>+</td><td>8</td><td>=</td><td>13</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>8</td><td>+</td><td>13</td><td>=</td><td>21</td></tr>
+</table>
+<p>The numbers seemed to get bigger faster and faster. She knew a little about ratios, and wondered how the ratios between successive numbers changed. She asked her big sister Lu to help her.</p>
+<p>Lu knew about fractions and the number line, so she helped Fi plot the ratios. They all seemed to be between 1 and 2, so this is what she <span onclick="drawfibs(10,500)">drew</span>:</p>
+<canvas id="line12" width="820" height="32"></canvas>
+<p>The ratios seemed to be getting closer and closer to some particular number between 1 and 2, with each successive ratio somewhere between the last two. Grandpa showed them this <span onclick="animatefibs()">zoom-in</span>...</p>
+<canvas id="animation" width="820" height="32"></canvas>
+<p>But what was the exact ratio? Their mom Goldie showed them a little algebra to figure it out...</p>
+<p>Goldie said, &ldquo;Let&rsquo;s name the ratio after Fi, and use the Greek letter \(\phi\). If some number well into the sequence is \(n\), then the next number is pretty much \(n \times \phi\), and the number after that is about \(n \times \phi \times \phi\). But we know that the sum of those first two is the third: \(n + n\phi = n\phi^2\). We can divide by \(n\) and get \(1+\phi = \phi^2\). This gives the quadratic equation \(\phi^2-\phi-1 = 0\), and, since we know \(\phi > 1\), the solution, using the quadratic formula, is \(\phi = \frac{1+\sqrt{5}}{2}\).&rdquo;</p>
+<p>Fi and Lu decided to name \(\phi\) after their mom, so they called it the Golden ratio. It turns out that \(\phi\) is the most irrational number, in the sense that it\rsquo;s always as far away as possible from any nearby fraction.</p>
+<p>We can use \(\phi\)&rsquo;s quadratic equation to see that \(\phi = \phi^2/\phi = (\phi+1)/\phi = 1+1/\phi\), or \(1/\phi = \phi-1\). So if you have a rectangle whose sides have a ratio of \(\phi\), and remove a square, the remaining rectangle is similar to the original one!</p>
+<canvas id="squares" width="59" height="38"></canvas>
+
+<p>Lu wondered what would happen if she started with different numbers, and decided to try 2 and 1. (This was the first pair that didn't just produce Fi's sequence.)</p>
+<table>
+  <tr><td>2</td><td>+</td><td>1</td><td>=</td><td>3</td></tr>
+  <tr><td></td><td></td><td>1</td><td>+</td><td>3</td><td>=</td><td>4</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td>3</td><td>+</td><td>4</td><td>=</td><td>7</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td>4</td><td>+</td><td>7</td><td>=</td><td>11</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>7</td><td>+</td><td>11</td><td>=</td><td>18</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>11</td><td>+</td><td>18</td><td>=</td><td>29</td></tr>
+</table>
+                                        
+<p>Goldie suggested writing the <i>n</i>th number in Fi's sequence as \(F_n\) and the <i>n</i>th number in Lu's sequence as \(L_n\), then pointed out that \(F_n = \frac{\phi^n-(-\phi)^{-n}}{\sqrt{5}}\) and \(L_n = \phi^n+(-\phi)^{-n}\).</p>
+
+<p>As long as Goldie was showing the girls quadratic equations, she decided that she might as well show them something simpler: matrix arithmetic. After all, a matrix is just a rectangular array of numbers, with special methods for matrix addition and multiplication. While a matrix can be any size, \(2\times 2\) matrices are sufficient for investigating the girls&rsquo;s sequences.</p>
+
+<p>If we have a pair of matrices \(A=\begin{bmatrix}a_{11}&a_{12}\\a_{21}&a_{22}\end{bmatrix}\) and \(B=\begin{bmatrix}b_{11}&b_{12}\\b_{21}&b_{22}\end{bmatrix}\), then addition is element by element: \(A+B=\begin{bmatrix}a_{11}+b_{11}&a_{12}+b_{12}\\a_{21}+b_{21}&a_{22}+b_{22}\end{bmatrix}\)</p>
+
+<p>Multiplication is more complicated, with each element in the product combining a row of the first matrix with a column of the second: \(AB=\begin{bmatrix}a_{11}b_{11}+a_{12}b_{21}&a_{11}b_{12}+a_{12}b_{22}\\a_{21}b_{11}+a_{22}b_{21}&a_{21}b_{12}+a_{22}b_{22}\end{bmatrix}\).</p>
+
+<p>With those methods, most of the usual properties of addition and multiplication hold. One notable exception is that \(AB\) is not necessarily equal to \(BA\).</p>
+
+<p>It&rsquo;s not hard to see that \(\begin{bmatrix}F_n&F_{n+1}\\F_{n+1}&F_{n+2}\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\begin{bmatrix}F_{n-1}&F_n\\F_n&F_{n+1}\end{bmatrix}\), and \(\begin{bmatrix}L_n&L_{n+1}\\L_{n+1}&L_{n+2}\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\begin{bmatrix}L_{n-1}&L_n\\L_n&L_{n+1}\end{bmatrix}\). This is just a complicated way to express that the next element of either sequence is the sum of the previous two elements.</p>
+
+<p>If we define \(F=\begin{bmatrix}F_0&F_1\\F_1&F_2\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\), and \(L=\begin{bmatrix}L_{-1}&L_0\\L_0&L_1\end{bmatrix}=\begin{bmatrix}-1&2\\2&1\end{bmatrix}\), then \(\begin{bmatrix}F_{n-1}&F_n\\F_n&F_{n+1}\end{bmatrix}=F^n\) and \(\begin{bmatrix}L_{n-1}&L_n\\L_n&L_{n+1}\end{bmatrix}=F^nL\).</p>
+<p>These last two equations actually suggest a fast way to compute large members of the sequences, because there is a trick for doing exponentiation quickly. And, together with the observation that \(FL = LF\), they will help to discover several formulas for the sequences.</p>
+
+<p>For example, since \(F^{m+n} = F^m F^n\), we can see that \(F_{m+n} = F_m F_{n-1} + F_{m+1} F_n\). And since \(F^{m+n}L = F^m L F^n\) we also have \(L_{m+n} = L_m F_{n-1}+L_{m+1}F_n\).</p>
+<p>A less obvious pair of relationships is \(F_{m+k} = L_kF_m-(-1)^kF_{m-k}\) and \(L_{m+k} = L_kL_m-(-1)^kL_{m-k}\). These are most easily proved by bidirectional induction on <i>k</i>, starting with 0 and 1.</p>
+<p>By the way, Fi's sequence is actually called the Fibonacci sequence, and Lu's sequence is named the Lucas sequence. Meanwhile, the Golden ratio is, in fact, called the Golden ratio, and written as \(\phi\).</p>
+</body>
