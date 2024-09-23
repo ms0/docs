@@ -5,6 +5,8 @@ NOTE: Do not depend on github's pdf viewer, as it uses nonstandard fonts. Instea
 
 dft.html is an interactive animated demonstration of discrete Fourier transforms
 
+fib.html is an interactive animated elementary tutorial on Fibonacci/Lucas sequences
+
 gmovie.pdf is a description and frame-by-frame movie of Grover's algorithm
 
 math.pdf is the unabridged math supplement to Network Security: Private Communication in a Public World
