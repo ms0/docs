@@ -167,6 +167,16 @@ function drawsquares() {
   cts.strokeRect(cwwmarg,cwr,sqw,sqh);
   cts.strokeRect(cwwmarg,cwr,sqh,sqh);
 }
+
+function showqf(o) {
+  var b = document.body.getClientRects()[0];
+  var r = o.parentNode.getClientRects()[0];
+  o = document.getElementById('quadform');
+  o.style.display='block';
+  var q = o.getClientRects()[0];
+  o.style.left = (r.width-q.width)/2;
+  o.style.top = (r.top+r.bottom-q.height)/2-b.top;
+}
 </script>
 <style>
 span {
@@ -187,6 +197,16 @@ canvas {
 }
 body {
   max-width:820;
+}
+.popup {
+  background-color:white;
+  display:none;
+  z-index:1;
+  position:absolute;
+  top:0;
+  left:0;
+  padding:3px;
+  border:1px solid black;
 }
 </style>
 </head>
@@ -209,8 +229,8 @@ body {
 <div><canvas id="animation" width="820" height="32"></canvas></div>
 <p>But what was the exact ratio? Their mom Goldie showed them a little algebra to figure it out...</p>
 <h2>Mom&rsquo;s Math</h2>
-<p>Goldie said, &ldquo;Let&rsquo;s name the ratio after Fi, and use the Greek letter \(\phi\). If some number well into the sequence is \(n\), then the next number is pretty much \(n \times \phi\), and the number after that is about \(n \times \phi \times \phi\). But we know that the sum of those first two is the third: \(n + n\phi = n\phi^2\). We can divide by \(n\) and get \(1+\phi = \phi^2\). This gives the quadratic equation \(\phi^2-\phi-1 = 0\), and, since we know \(\phi > 1\), the solution, using the quadratic formula, is \(\phi = \frac{1+\sqrt{5}}{2}\).&rdquo;</p>
-<p>Fi and Lu decided to name \(\phi\) after their mom, so they called it the Golden ratio. It turns out that \(\phi\) is the most irrational number in the sense that the sequence of &ldquo;best&rdquo; nearby fractions approaches it as slowly as possible. (A nearby fraction is &ldquo;best&rdquo; if no fraction with a smaller denominator is closer.)</p>
+<p>Goldie said, &ldquo;Let&rsquo;s name the ratio after Fi, and use the Greek letter \(\phi\). If some number well into the sequence is \(n\), then the next number is pretty much \(n \times \phi\), and the number after that is about \(n \times \phi \times \phi\). But we know that the sum of those first two is the third: \(n + n\phi = n\phi^2\). We can divide by \(n\) and get \(1+\phi = \phi^2\). This gives the quadratic equation \(\phi^2-\phi-1 = 0\), and, since we know \(\phi > 1\), the solution, using the <span onclick="showqf(this)">quadratic formula</span>, is \(\phi = \frac{1+\sqrt{5}}{2}\).&rdquo;</p>
+<p>Fi and Lu decided to name \(\phi\) after their mom, so they called it the Golden ratio. It turns out that \(\phi\) is the most irrational number in the sense that the sequence of &ldquo;best&rdquo; nearby fractions approaches it as slowly as possible. (A nearby fraction is &ldquo;best&rdquo; if no fraction with an equal or smaller denominator is closer.)</p>
 <p>We can use \(\phi\)&rsquo;s quadratic equation to see that \(\phi = \frac{\phi^2}{\phi} = \frac{\phi+1}{\phi} = 1+\frac{1}{\phi}\), or \(\frac{1}{\phi} = \phi-1\). So if you have a rectangle whose sides have a ratio of \(\phi\), and remove a square, the remaining rectangle is similar to the original one!</p>
 <div><canvas id="squares" width="59" height="38"></canvas></div>
 <h2>Lu&rsquo;s Sequence</h2>
@@ -243,4 +263,14 @@ body {
 <p>A less obvious pair of relationships is \(F_{m+k} = L_kF_m-(-1)^kF_{m-k}\) and \(L_{m+k} = L_kL_m-(-1)^kL_{m-k}\). These are most easily proved by bidirectional induction on <i>k</i>, starting with 0 and 1.</p>
 <h2>Epilog</h2>
 <p>By the way, Fi's sequence is actually called the Fibonacci sequence, and Lu's sequence is named the Lucas sequence. Meanwhile, the Golden ratio is, in fact, called the Golden ratio, and written as \(\phi\).</p>
+<div id="quadform" class="popup" onclick="this.style.display='none'">
+<h2>Derivation of Quadratic Formula</h2>
+<p>We're given \(ax^2+bx+c=0\).</p>
+<p>Divide both sides by \(a\): \(x^2+\frac{b}{a}+\frac{c}{a}=0\).</p>
+<p>Add \(\frac{b^2}{4a^2}-\frac{c}{a}\) to both sides: \(x^2+\frac{b}{a}+\frac{b^2}{4a^2}=\frac{b^2}{4a^2}-\frac{c}{a}\).</p>
+<p>Left side is a perfect square: \((x+\frac{b}{2a})^2 = \frac{b^2-4ac}{4a^2}\).</p>
+<p>Take square root of both sides: \(x+\frac{b}{2a} = \pm\frac{\sqrt{b^2-4ac}}{2a}\).</p>
+<p>So \(x = \frac{-b\pm\sqrt{b^2-4ac}}{2a}\).</p>
+</div>
+
 </body>
