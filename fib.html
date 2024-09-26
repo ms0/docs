@@ -17,8 +17,8 @@ var cwfigwid=7;          // figure width
 var cwr=2;               // radius of dots
 var cwwmarg=cwfigwid;    // horizontal margins
 var clength;             // length of line
-var sqw=55;
-var sqh=34;
+var sqw=89;
+var sqh=55;
 var cwidth;                // width of canvas
 var cheight=2*(cwr+cwps);  // height of canvas
 var swidth=sqw+2*cwwmarg;
@@ -168,10 +168,10 @@ function drawsquares() {
   cts.strokeRect(cwwmarg,cwr,sqh,sqh);
 }
 
-function showqf(o) {
+function showpopup(o,s) {
   var b = document.body.getClientRects()[0];
   var r = o.parentNode.getClientRects()[0];
-  o = document.getElementById('quadform');
+  o = document.getElementById(s);
   o.style.display='block';
   var q = o.getClientRects()[0];
   o.style.left = (r.width-q.width)/2;
@@ -205,8 +205,10 @@ body {
   position:absolute;
   top:0;
   left:0;
-  padding:3px;
+  padding:6px;
+  margin:6px;
   border:1px solid black;
+  max-width:inherit;
 }
 </style>
 </head>
@@ -229,7 +231,7 @@ body {
 <div><canvas id="animation" width="820" height="32"></canvas></div>
 <p>But what was the exact ratio? Their mom Goldie showed them a little algebra to figure it out...</p>
 <h2>Mom&rsquo;s Math</h2>
-<p>Goldie said, &ldquo;Let&rsquo;s name the ratio after Fi, and use the Greek letter \(\phi\). If some number well into the sequence is \(n\), then the next number is pretty much \(n \times \phi\), and the number after that is about \(n \times \phi \times \phi\). But we know that the sum of those first two is the third: \(n + n\phi = n\phi^2\). We can divide by \(n\) and get \(1+\phi = \phi^2\). This gives the quadratic equation \(\phi^2-\phi-1 = 0\), and, since we know \(\phi > 1\), the solution, using the <span onclick="showqf(this)">quadratic formula</span>, is \(\phi = \frac{1+\sqrt{5}}{2}\).&rdquo;</p>
+<p>Goldie said, &ldquo;Let&rsquo;s name the ratio after Fi, and use the Greek letter \(\phi\). If some number well into the sequence is \(n\), then the next number is pretty much \(n \times \phi\), and the number after that is about \(n \times \phi \times \phi\). But we know that the sum of those first two is the third: \(n + n\phi = n\phi^2\). We can divide by \(n\) and get \(1+\phi = \phi^2\). This gives the quadratic equation \(\phi^2-\phi-1 = 0\), and, since we know \(\phi > 1\), the solution, using the <span onclick="showpopup(this,'quadform')">quadratic formula</span>, is \(\phi = \frac{1+\sqrt{5}}{2}\).&rdquo;</p>
 <p>Fi and Lu decided to name \(\phi\) after their mom, so they called it the Golden ratio. It turns out that \(\phi\) is the most irrational number in the sense that the sequence of &ldquo;best&rdquo; nearby fractions approaches it as slowly as possible. (A nearby fraction is &ldquo;best&rdquo; if no fraction with an equal or smaller denominator is closer.)</p>
 <p>We can use \(\phi\)&rsquo;s quadratic equation to see that \(\phi = \frac{\phi^2}{\phi} = \frac{\phi+1}{\phi} = 1+\frac{1}{\phi}\), or \(\frac{1}{\phi} = \phi-1\). So if you have a rectangle whose sides have a ratio of \(\phi\), and remove a square, the remaining rectangle is similar to the original one!</p>
 <div><canvas id="squares" width="59" height="38"></canvas></div>
@@ -248,19 +250,19 @@ body {
 
 <p>As long as Goldie was showing the girls quadratic equations, she decided that she might as well show them something simpler: matrix arithmetic. After all, a matrix is just a rectangular array of numbers, with special methods for matrix addition and multiplication. While a matrix can be any size, \(2\times 2\) matrices are sufficient for investigating the girls&rsquo;s sequences.</p>
 
-<p>If we have a pair of matrices \(A=\begin{bmatrix}a_{11}&a_{12}\\a_{21}&a_{22}\end{bmatrix}\) and \(B=\begin{bmatrix}b_{11}&b_{12}\\b_{21}&b_{22}\end{bmatrix}\), then addition is element by element: \(A+B=\begin{bmatrix}a_{11}+b_{11}&a_{12}+b_{12}\\a_{21}+b_{21}&a_{22}+b_{22}\end{bmatrix}\)</p>
+<p>If we have a pair of matrices \(A=\begin{bmatrix}a_{11}&a_{12}\\a_{21}&a_{22}\end{bmatrix}\) and \(B=\begin{bmatrix}b_{11}&b_{12}\\b_{21}&b_{22}\end{bmatrix}\), then addition is element by element: \(A+B=\begin{bmatrix}a_{11}+b_{11}&a_{12}+b_{12}\\a_{21}+b_{21}&a_{22}+b_{22}\end{bmatrix}\).</p>
 
 <p>Multiplication is more complicated, with each element in the product combining a row of the first matrix with a column of the second: \(AB=\begin{bmatrix}a_{11}b_{11}+a_{12}b_{21}&a_{11}b_{12}+a_{12}b_{22}\\a_{21}b_{11}+a_{22}b_{21}&a_{21}b_{12}+a_{22}b_{22}\end{bmatrix}\).</p>
 
-<p>With those methods, most of the usual properties of addition and multiplication hold. One notable exception is that \(AB\) is not necessarily equal to \(BA\).</p>
+<p>With those methods, most of the usual <span onclick="showpopup(this,'properties')">properties</span> of addition and multiplication hold. One notable exception is that \(AB\) is not necessarily equal to \(BA\).</p>
 
 <p>It&rsquo;s not hard to see that \(\begin{bmatrix}F_n&F_{n+1}\\F_{n+1}&F_{n+2}\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\begin{bmatrix}F_{n-1}&F_n\\F_n&F_{n+1}\end{bmatrix}\), and \(\begin{bmatrix}L_n&L_{n+1}\\L_{n+1}&L_{n+2}\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\begin{bmatrix}L_{n-1}&L_n\\L_n&L_{n+1}\end{bmatrix}\). This is just a complicated way to express that the next element of either sequence is the sum of the previous two elements.</p>
 
 <p>If we define \(F=\begin{bmatrix}F_0&F_1\\F_1&F_2\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\), and \(L=\begin{bmatrix}L_{-1}&L_0\\L_0&L_1\end{bmatrix}=\begin{bmatrix}-1&2\\2&1\end{bmatrix}\), then \(\begin{bmatrix}F_{n-1}&F_n\\F_n&F_{n+1}\end{bmatrix}=F^n\) and \(\begin{bmatrix}L_{n-1}&L_n\\L_n&L_{n+1}\end{bmatrix}=F^nL\).</p>
-<p>These last two equations actually suggest a fast way to compute large members of the sequences, because there is a trick for doing exponentiation quickly. And, together with the observation that \(FL = LF\), they will help to discover several formulas for the sequences.</p>
+<p>These last two equations actually suggest a fast way to compute large members of the sequences, because there is a <span onclick="showpopup(this,'powtrick')">trick</span> for doing exponentiation quickly. And, together with the observation that \(FL = LF\), they will help to discover several formulas for the sequences.</p>
 
 <p>For example, since \(F^{m+n} = F^m F^n\), we can see that \(F_{m+n} = F_m F_{n-1} + F_{m+1} F_n\). And since \(F^{m+n}L = F^m L F^n\) we also have \(L_{m+n} = L_m F_{n-1}+L_{m+1}F_n\).</p>
-<p>A less obvious pair of relationships is \(F_{m+k} = L_kF_m-(-1)^kF_{m-k}\) and \(L_{m+k} = L_kL_m-(-1)^kL_{m-k}\). These are most easily proved by bidirectional induction on <i>k</i>, starting with 0 and 1.</p>
+<p>A less obvious pair of relationships is \(F_{m+k} = L_kF_m-(-1)^kF_{m-k}\) and \(L_{m+k} = L_kL_m-(-1)^kL_{m-k}\). These are most easily proved by bidirectional <span onclick="showpopup(this,'induction')">induction</span> on <i>k</i>, starting with 0 and 1.</p>
 <h2>Epilog</h2>
 <p>By the way, Fi's sequence is actually called the Fibonacci sequence, and Lu's sequence is named the Lucas sequence. Meanwhile, the Golden ratio is, in fact, called the Golden ratio, and written as \(\phi\).</p>
 <div id="quadform" class="popup" onclick="this.style.display='none'">
@@ -272,5 +274,23 @@ body {
 <p>Take square root of both sides: \(x+\frac{b}{2a} = \pm\frac{\sqrt{b^2-4ac}}{2a}\).</p>
 <p>So \(x = \frac{-b\pm\sqrt{b^2-4ac}}{2a}\).</p>
 </div>
-
+<div id="induction" class="popup" onclick="this.style.display='none'">
+<h2>Induction</h2>
+<p>If we want to prove something for all nonnegative integers, it&rsquo;s sufficient to prove it for 0 and then prove that if it&rsquo;s true for \(n\) then it&rsquo;s true for \(n+1\). If we want to prove it for all integers, the we also need to show that if it&rsquo;s true for \(n\) then it&rsquo;s true for \(n-1\).</p>
+<p>In the case of proving something about a sequence defined by \(s_{n+1}=s_n+s_{n-1}\), if we can prove it for \(s_0\) and \(s_1\), then we can try to prove it, assuming it&rsquo;s true for \(s_n\) and \(s_{n-1}\), for \(s_{n+1}=s_n+s_{n-1}\) and for \(s_{n-2}=s_n-s_{n-1}\).</p>
+</div>
+<div id='powtrick' class="popup" onclick="this.style.display='none'">
+<h2>Computing Powers Quickly</h2>
+<p>The idea is to write the exponent in binary.</p>
+<p>You start by setting the result to the multiplicative identity, which is 1 if the base is a number, and the identity matrix \(I\) if the base is a matrix.</p>
+<p>Then, for each bit of the exponent, starting at the left, square the result, and if the bit is a 1, multiply the result by the base.</p>
+<p>When you&rsquo;ve exhausted the exponent, the result is your answer.</p>
+<p>You&rsquo;ve done one or two multiplications for each bit of the exponent, which is exponentially faster than doing exponent-many multiplications.</p>
+</div>
+<div id='properties' class="popup" onclick="this.style.display='none'">
+<h2>Properties of Matrix Arithmetic</h2>
+<p>Associativity: \(A+(B+C) = (A+B)+C\) and \(A(BC) = (AB)C\).</p>
+<p>Commutativity of addition: \(A+B=B+A\).</p>
+<p>Distributivity: \(A(B+C) = AB+AC\) and \((A+B)C=AC+BC\).</p>
+</div>
 </body>
