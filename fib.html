@@ -12,22 +12,24 @@ var cts;    // context for squares
 var fiba;
 var fibx;
 
+var phi = (1+Math.sqrt(5))/2;
+
 var cwps=12;             // point size
 var cwfigwid=7;          // figure width
 var cwr=2;               // radius of dots
 var cwwmarg=cwfigwid;    // horizontal margins
 var clength;             // length of line
-var sqw=89;
-var sqh=55;
+var sqh=72;
+var sqw=sqh*phi;
 var cwidth;                // width of canvas
 var cheight=2*(cwr+cwps);  // height of canvas
 var swidth=sqw+2*cwwmarg;
-var sheight=sqh+2*cwr;
+var sheight=sqw+2*cwr;
 
-var timer;
-var ticker; // tick count for timer
-
-var phi = (1+Math.sqrt(5))/2;
+var timer;    // for animatefibs
+var ticker;   // tick count for timer
+var stimer;   // for drawsquares
+var sticker;  // tick count for stimer
 
 function init() {
   cwidth=document.body.offsetWidth;
@@ -43,6 +45,7 @@ function init() {
   cta = cva.getContext('2d');
   cts = cvs.getContext('2d');
   ticker = 0;
+  sticker = 0;
   drawframe();
   drawfibs(5,0);
   drawsquares();
@@ -160,13 +163,35 @@ function drawframe() {
 }
 
 function drawsquares() {
+  var t = Math.max(0,sticker++/64);
+  var a = -t*Math.PI/2;
+  var s = 1+t/phi;
+  var c = 1+t;
+  cts.setTransform(1,0,0,1,0,0);
   cts.clearRect(0,0,swidth,sheight);
   cts.lineWidth=.5;
   cts.fillStyle='black';
   cts.strokeStyle='black';
-  cts.strokeRect(cwwmarg,cwr,sqw,sqh);
-  cts.strokeRect(cwwmarg,cwr,sqh,sqh);
+  cts.translate(cwwmarg+sqw/2,cwr+c*sqw/2);
+  cts.scale(s,s);
+  cts.rotate(a);
+  cts.strokeRect(-sqw/2,-sqh/2,sqw,sqh);
+  cts.strokeRect(-sqw/2,-sqh/2,sqh,sqh);
+  if (t >= 1) {
+    stimer = clearInterval(stimer);
+    sticker = -1;
+    setTimeout(drawsquares,250);
+  }
 }
+
+function animatesquares() {
+  if (stimer) {
+    stimer = clearInterval(stimer);
+  } else {
+    sticker = -32;
+    stimer = setInterval(drawsquares,1000/64);
+  }
+}	
 
 function showpopup(o,s) {
   var b = document.body.getClientRects()[0];
@@ -229,12 +254,12 @@ body {
 <div><canvas id="line12" width="820" height="32"></canvas></div>
 <p>The ratios seemed to be getting closer and closer to some particular number between 1 and 2, with each successive ratio somewhere between the last two. Grandpa showed them this <span onclick="animatefibs()">zoom-in</span>...</p>
 <div><canvas id="animation" width="820" height="32"></canvas></div>
-<p>But what was the exact ratio? Their mom Goldie showed them a little algebra to figure it out...</p>
+<p>But what was the exact ratio? Their mom Goldie showed them a little <span onclick="showpopup(this,'algebra')">algebra</span> to figure it out...</p>
 <h2>Mom&rsquo;s Math</h2>
 <p>Goldie said, &ldquo;Let&rsquo;s name the ratio after Fi, and use the Greek letter \(\phi\). If some number well into the sequence is \(n\), then the next number is pretty much \(n \times \phi\), and the number after that is about \(n \times \phi \times \phi\). But we know that the sum of those first two is the third: \(n + n\phi = n\phi^2\). We can divide by \(n\) and get \(1+\phi = \phi^2\). This gives the quadratic equation \(\phi^2-\phi-1 = 0\), and, since we know \(\phi > 1\), the solution, using the <span onclick="showpopup(this,'quadform')">quadratic formula</span>, is \(\phi = \frac{1+\sqrt{5}}{2}\).&rdquo;</p>
 <p>Fi and Lu decided to name \(\phi\) after their mom, so they called it the Golden ratio. It turns out that \(\phi\) is the most irrational number in the sense that the sequence of &ldquo;best&rdquo; nearby fractions approaches it as slowly as possible. (A nearby fraction is &ldquo;best&rdquo; if no fraction with an equal or smaller denominator is closer.)</p>
 <p>We can use \(\phi\)&rsquo;s quadratic equation to see that \(\phi = \frac{\phi^2}{\phi} = \frac{\phi+1}{\phi} = 1+\frac{1}{\phi}\), or \(\frac{1}{\phi} = \phi-1\). So if you have a rectangle whose sides have a ratio of \(\phi\), and remove a square, the remaining rectangle is similar to the original one!</p>
-<div><canvas id="squares" width="59" height="38"></canvas></div>
+<div><canvas id="squares" width="59" height="38" onclick="animatesquares()" title="Click Me!"></canvas></div>
 <h2>Lu&rsquo;s Sequence</h2>
 <p>Lu wondered what would happen if she started with different numbers, and decided to try 2 and 1. (This was the first pair that didn't just produce Fi's sequence.)</p>
 <table>
@@ -270,9 +295,24 @@ body {
 <p>For example, since \(F^{m+n} = F^m F^n\), we can see that \(f_{m+n} = f_m f_{n-1} + f_{m+1} f_n\). And since \(F^{m+n}L = F^m L F^n\) we also have \(l_{m+n} = l_m f_{n-1}+l_{m+1}f_n\).</p>
 <h2>Epilog</h2>
 <p>By the way, Fi's sequence is actually called the Fibonacci sequence, and Lu's sequence is named the Lucas sequence. Meanwhile, the Golden ratio is, in fact, called the Golden ratio, and written as \(\phi\).</p>
+<div id="algebra" class="popup" onclick="this.style.display='none'">
+<h2>Algebra</h2>
+<p>Algebra is a way to describe relationships between numbers.</p>
+<p>We use letters so that we can describe many relationships at the same time. For example, to say that zero added to any number is that same number, we can write \(\forall n\; 0+n=n\). Note that \(\forall\) means &ldquo;for all&rdquo;.</p>
+<p>If the three sides of a triangle are \(a\), \(b\), and \(c\), then we know that \(a>b+c\), \(b>c+a\), and \(c>a+b\). Note that \(>\) means &rdquo;is greater than&ldquo; and \(<\) means &rdquo;is less than&ldquo;.</p>
+<p>We sometimes use parentheses to specify the order we do operations. Operations inside parentheses are always done before other operations.</p>
+<p>There are some properties of addition and multiplication that we can describe:<p>
+<p>Associativity of addition: \(\forall a\forall b\forall c\;(a+b)+c = a+(b+c)\).</p>
+<p>Associativity of multiplication: \(\forall a\forall b\forall c\;(ab)c = a(bc)\). Note that we don&rsquo;t often use \(\times\) for multiplication; instead we just concatenate.</p>
+<p>Because addition and multiplication are associative, we don&rsquo;t need to use parentheses when we write \(a+b+c\) or \(abc\).</p>
+<p>Commutativity of addition: \(\forall a\forall b\;a+b\) = \(b+a\).</p>
+<p>Commutativity of multiplication: \(\forall a\forall b\;ab\) = \(ba\).</p>
+<p>Distributivity of multiplication over addition: \(\forall a\forall b\forall c\;a(b+c) = ab+ac\). Note that without parentheses, multiplication is always done before addition.</p>
+<p>One of the basic principles of algebra is that if we have an equation (something = something else) and we perform the same operation to each side of the equation, the new equation will still be true.</p> 
+</div>
 <div id="quadform" class="popup" onclick="this.style.display='none'">
 <h2>Derivation of Quadratic Formula</h2>
-<p>We're given \(ax^2+bx+c=0\).</p>
+<p>We&rsquo;re given \(ax^2+bx+c=0\).</p>
 <p>Divide both sides by \(a\): \(x^2+\frac{b}{a}+\frac{c}{a}=0\).</p>
 <p>Add \(\frac{b^2}{4a^2}-\frac{c}{a}\) to both sides: \(x^2+\frac{b}{a}+\frac{b^2}{4a^2}=\frac{b^2}{4a^2}-\frac{c}{a}\).</p>
 <p>Left side is a perfect square: \((x+\frac{b}{2a})^2 = \frac{b^2-4ac}{4a^2}\).</p>
