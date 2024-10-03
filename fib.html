@@ -281,18 +281,18 @@ body {
 
 <p>As long as Goldie was showing the girls quadratic equations, she decided that she might as well show them something simpler: matrix arithmetic. After all, a matrix is just a rectangular array of numbers, with special methods for matrix addition and multiplication. While a matrix can be any size, \(2\times 2\) matrices are sufficient for investigating the girls&rsquo;s sequences.</p>
 
-<p>If we have a pair of matrices \(A=\begin{bmatrix}a_{11}&a_{12}\\a_{21}&a_{22}\end{bmatrix}\) and \(B=\begin{bmatrix}b_{11}&b_{12}\\b_{21}&b_{22}\end{bmatrix}\), then addition is element by element: \(A+B=\begin{bmatrix}a_{11}+b_{11}&a_{12}+b_{12}\\a_{21}+b_{21}&a_{22}+b_{22}\end{bmatrix}\).</p>
+<p>If we have a pair of matrices \(\boldsymbol{A}=\begin{bmatrix}a_{11}&a_{12}\\a_{21}&a_{22}\end{bmatrix}\) and \(\boldsymbol{B}=\begin{bmatrix}b_{11}&b_{12}\\b_{21}&b_{22}\end{bmatrix}\), then addition is element by element: \(\boldsymbol{A}+\boldsymbol{B}=\begin{bmatrix}a_{11}+b_{11}&a_{12}+b_{12}\\a_{21}+b_{21}&a_{22}+b_{22}\end{bmatrix}\).</p>
 
-<p>Multiplication is more complicated, with each element in the product combining a row of the first matrix with a column of the second: \(AB=\begin{bmatrix}a_{11}b_{11}+a_{12}b_{21}&a_{11}b_{12}+a_{12}b_{22}\\a_{21}b_{11}+a_{22}b_{21}&a_{21}b_{12}+a_{22}b_{22}\end{bmatrix}\).</p>
+<p>Multiplication is more complicated, with each element in the product combining a row of the first matrix with a column of the second: \(\boldsymbol{A}\boldsymbol{B}=\begin{bmatrix}a_{11}b_{11}+a_{12}b_{21}&a_{11}b_{12}+a_{12}b_{22}\\a_{21}b_{11}+a_{22}b_{21}&a_{21}b_{12}+a_{22}b_{22}\end{bmatrix}\).</p>
 
-<p>With those methods, most of the usual <span onclick="showpopup(this,'properties')">properties</span> of addition and multiplication hold. One notable exception is that \(AB\) is not necessarily equal to \(BA\).</p>
+<p>With those methods, most of the usual <span onclick="showpopup(this,'properties')">properties</span> of addition and multiplication hold. One notable exception is that \(\boldsymbol{A}\boldsymbol{B}\) is not necessarily equal to \(\boldsymbol{B}\boldsymbol{A}\).</p>
 
 <p>It&rsquo;s not hard to see that \(\begin{bmatrix}f_n&f_{n+1}\\f_{n+1}&f_{n+2}\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\begin{bmatrix}f_{n-1}&f_n\\f_n&f_{n+1}\end{bmatrix}\), and \(\begin{bmatrix}l_n&l_{n+1}\\l_{n+1}&l_{n+2}\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\begin{bmatrix}l_{n-1}&l_n\\l_n&l_{n+1}\end{bmatrix}\). This is just a complicated way to express that the next element of either sequence is the sum of the previous two elements.</p>
 
-<p>If we define \(F=\begin{bmatrix}f_0&f_1\\f_1&f_2\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\), and \(L=\begin{bmatrix}l_{-1}&l_0\\l_0&l_1\end{bmatrix}=\begin{bmatrix}-1&2\\2&1\end{bmatrix}\), then \(\begin{bmatrix}f_{n-1}&f_n\\f_n&f_{n+1}\end{bmatrix}=F^n\) and \(\begin{bmatrix}l_{n-1}&l_n\\l_n&l_{n+1}\end{bmatrix}=F^nL\).</p>
-<p>These last two equations actually suggest a fast way to compute large members of the sequences, because there is a <span onclick="showpopup(this,'powtrick')">trick</span> for doing exponentiation quickly. And, together with the observation that \(FL = LF\), they will help to discover several formulas for the sequences.</p>
+<p>If we define \(\mathbf{F}=\begin{bmatrix}f_0&f_1\\f_1&f_2\end{bmatrix}=\begin{bmatrix}0&1\\1&1\end{bmatrix}\), and \(\mathbf{L}=\begin{bmatrix}l_{-1}&l_0\\l_0&l_1\end{bmatrix}=\begin{bmatrix}-1&2\\2&1\end{bmatrix}\), then \(\begin{bmatrix}f_{n-1}&f_n\\f_n&f_{n+1}\end{bmatrix}=\mathbf{F}^n\) and \(\begin{bmatrix}l_{n-1}&l_n\\l_n&l_{n+1}\end{bmatrix}=\mathbf{F}^n\mathbf{L}\).</p>
+<p>These last two equations actually suggest a fast way to compute large members of the sequences, because there is a <span onclick="showpopup(this,'powtrick')">trick</span> for doing exponentiation quickly. And, together with the observation that \(\mathbf{F}\mathbf{L} = \mathbf{L}\mathbf{F}\), they will help to discover several formulas for the sequences.</p>
 
-<p>For example, since \(F^{m+n} = F^m F^n\), we can see that \(f_{m+n} = f_m f_{n-1} + f_{m+1} f_n\). And since \(F^{m+n}L = F^m L F^n\) we also have \(l_{m+n} = l_m f_{n-1}+l_{m+1}f_n\).</p>
+<p>For example, since \(\mathbf{F}^{m+n} = \mathbf{F}^m \mathbf{F}^n\), we can see that \(f_{m+n} = f_m f_{n-1} + f_{m+1} f_n\). And since \(\mathbf{F}^{m+n}\mathbf{L} = \mathbf{F}^m \mathbf{L} \mathbf{F}^n\) we also have \(l_{m+n} = l_m f_{n-1}+l_{m+1}f_n\).</p>
 <h2>Epilog</h2>
 <p>By the way, Fi's sequence is actually called the Fibonacci sequence, and Lu's sequence is named the Lucas sequence. Meanwhile, the Golden ratio is, in fact, called the Golden ratio, and written as \(\phi\).</p>
 <div id="algebra" class="popup" onclick="this.style.display='none'">
@@ -327,15 +327,15 @@ body {
 <div id='powtrick' class="popup" onclick="this.style.display='none'">
 <h2>Computing Powers Quickly</h2>
 <p>The idea is to write the exponent in binary.</p>
-<p>You start by setting the result to the multiplicative identity, which is 1 if the base is a number, and the identity matrix \(I\) if the base is a matrix.</p>
+<p>You start by setting the result to the multiplicative identity, which is 1 if the base is a number, and the identity matrix <b>I</b> if the base is a matrix.</p>
 <p>Then, for each bit of the exponent, starting at the left, square the result, and if the bit is a 1, multiply the result by the base.</p>
 <p>When you&rsquo;ve exhausted the exponent, the result is your answer.</p>
 <p>You&rsquo;ve done one or two multiplications for each bit of the exponent, which is exponentially faster than doing exponent-many multiplications.</p>
 </div>
 <div id='properties' class="popup" onclick="this.style.display='none'">
 <h2>Properties of Matrix Arithmetic</h2>
-<p>Associativity: \(A+(B+C) = (A+B)+C\) and \(A(BC) = (AB)C\).</p>
-<p>Commutativity of addition: \(A+B=B+A\).</p>
-<p>Distributivity: \(A(B+C) = AB+AC\) and \((A+B)C=AC+BC\).</p>
+<p>Associativity: \(\boldsymbol{A}+(\boldsymbol{B}+\boldsymbol{C}) = (\boldsymbol{A}+\boldsymbol{B})+\boldsymbol{C}\) and \(\boldsymbol{A}(\boldsymbol{B}\boldsymbol{C}) = (\boldsymbol{A}\boldsymbol{B})\boldsymbol{C}\).</p>
+<p>Commutativity of addition: \(\boldsymbol{A}+\boldsymbol{B}=\boldsymbol{B}+\boldsymbol{A}\).</p>
+<p>Distributivity: \(\boldsymbol{A}(\boldsymbol{B}+\boldsymbol{C}) = \boldsymbol{A}\boldsymbol{B}+\boldsymbol{A}\boldsymbol{C}\) and \((\boldsymbol{A}+\boldsymbol{B})\boldsymbol{C}=\boldsymbol{A}\boldsymbol{C}+\boldsymbol{B}\boldsymbol{C}\).</p>
 </div>
 </body>
