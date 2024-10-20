@@ -271,11 +271,11 @@ body {
   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>11</td><td>+</td><td>18</td><td>=</td><td>29</td></tr>
 </table>
 <h2>More Mom&rsquo;s Math</h2>                                        
-<p>Goldie suggested writing the <i>n</i>th number in Fi&rsquo;s sequence as \(f_n\) and the <i>n</i>th number in Lu&rsquo;s sequence as \(l_n\). With that notation, \(f_{n+1} = f_n + f_{n-1}\) and \(l_{n+1} = l_n + l_{n-1}\), and this addition property determines the sequences when combined with their initial values (\(f_0 = 0\), \(f_1=1\), \(l_0 = 2\), \(l_1=1\)). She pointed out that \(\phi\) and \(1-\phi = (-\phi)^{-1}\) are the two solutions to the quadratic equation \(x^2=x+1\) and so the geometric sequences \(\phi^n\) and \((-\phi)^{-n}\) each have the same addition property: \(\phi^{n+1} = \phi^n + \phi^{n-1}\) and \((-\phi)^{-(n+1)} = (-\phi)^{-n} + (-\phi)^{-(n-1)}\). It is easy to see that any linear combination of \(\phi^n\) and \((-\phi)^{-n}\) will also have that property. In particular, \(f_n = \frac{\phi^n-(-\phi)^{-n}}{\sqrt{5}}\) and \(l_n = \phi^n+(-\phi)^{-n}\). All we need to verify those formulas is to check that they&rsquo;re true for \(n=0\) and \(n=1\). We can then conclude that they&rsquo;re true for all integers (both positive and negative). This is called bidirectional <span onclick="showpopup(this,'induction')">induction</span>.</p>
+<p>Goldie suggested writing the <i>n</i>th number in Fi&rsquo;s sequence as \(f_n\) and the <i>n</i>th number in Lu&rsquo;s sequence as \(l_n\). With that notation, \(f_{n+1} = f_n + f_{n-1}\) and \(l_{n+1} = l_n + l_{n-1}\), and this addition property determines the sequences when combined with their initial values (\(f_0 = 0\), \(f_1=1\), \(l_0 = 2\), \(l_1=1\)). She pointed out that \(\phi\) and \(1-\phi = (-\phi)^{-1}\) are the two solutions to the quadratic equation \(x^2=x+1\) and so the <span onclick="showpopup(this,'geometric')">geometric sequences</span> \(\phi^n\) and \((-\phi)^{-n}\) each have the same addition property: \(\phi^{n+1} = \phi^n + \phi^{n-1}\) and \((-\phi)^{-(n+1)} = (-\phi)^{-n} + (-\phi)^{-(n-1)}\). It is easy to see that any linear combination of \(\phi^n\) and \((-\phi)^{-n}\) will also have that property. In particular, \(f_n = \frac{\phi^n-(-\phi)^{-n}}{\sqrt{5}}\) and \(l_n = \phi^n+(-\phi)^{-n}\). All we need to verify those formulas is to check that they&rsquo;re true for \(n=0\) and \(n=1\). We can then conclude that they&rsquo;re true for all integers (both positive and negative). This is called bidirectional <span onclick="showpopup(this,'induction')">induction</span>.</p>
 
 <p>Bidirectional induction on \(n\) can verify that \(l_n = f_{n-1}+f_{n+1}\) and bidirectional induction on \(k\) can verify that \(f_{n+k} = l_kf_n-(-1)^kf_{n-k}\) and \(l_{n+k} = l_kl_n-(-1)^kl_{n-k}\). When \(n=k\) we get \(f_{2n} = l_nf_n\) since \(f_0=0\) and \(l_{2n} = l_n^2-2(-1)^n\) since \(l_0=2\).</p>
 
-<p>Some formulas are ridiculously easy to verify. For example \(2f_n = f_n + f_n = f_n + f_{n-1} + f_{n-2} = f_{n+1} + f_{n-2}\), and similarly \(2l_n = l_{n+1}+l_{n-2}\). Meanwhile, \(3f_n = f_n + 2f_n = f_n + f_{n+1} + f_{n-2} = f_{n+2} + f_{n-2}\), and similarly \(3l_n = l_{n+2}+l_{n-2}\).</p>
+<p>Some formulas are ridiculously easy to verify. For example \(2f_n = f_n + f_n = f_n + f_{n-1} + f_{n-2} = f_{n+1} + f_{n-2}\), and similarly \(2l_n = l_{n+1}+l_{n-2}\). Meanwhile, \(3f_n = f_n + 2f_n = f_n + f_{n+1} + f_{n-2} = f_{n+2} + f_{n-2}\), and similarly \(3l_n = l_{n+2}+l_{n-2}\). Slightly harder are \(\sum_{n=a}^b f_n = f_{b+2}-f_{a+1}\) and \(\sum_{n=a}^b l_n = l_{b+2}-l_{a+1}\).</p>
 
 <p>Other formulas can be derived directly from those that express \(f_n\) and \(l_n\) in terms of \(\phi\): \(l_n^2 = l_{2n} + 2(-1)^n\) (didn&rsquo;t we just see this one?) and \(5f_n^2 = l_{2n} - 2(-1)^n\). Also \(|f_n| = |f_{-n}|\) and \(|l_n| = |l_{-n}|\) (the surrounding vertical bars mean absolute value).</p>
 
@@ -321,6 +321,10 @@ body {
 <p>Take square root of both sides: \(x+\frac{b}{2a} = \pm\frac{\sqrt{b^2-4ac}}{2a}\).</p>
 <p>So \(x = \frac{-b\pm\sqrt{b^2-4ac}}{2a}\).</p>
 </div>
+<div id="geometric" class="popup" onclick="this.style.display='none'">
+<h2>Geometric Sequences</h2>
+<p>A geometric sequence is a sequence of numbers with a fixed ratio between successive numbers. For example, if the first number in the sequence is \(1\), and the second is \(r\), then the <i>n</i>th term is \(r^n\). We can calculate the sum of the first \(k\) terms, \(s = \sum_{n=0}^{k-1}r^n\), by noticing that \(1+rs = s+r^k\) so \(s = \frac{r^k-1}{r-1}\); except that if \(r=1\), the sum is just \(k\). You might note that if \(r<1\), we&rsquo;d probably write this as \(s = \frac{1-r^k}{1-r}\); in this case the infinite sum \(\sum_{n=0}^\infty r^n = \frac{1}{1-r}\).</p>
+</div>
 <div id="induction" class="popup" onclick="this.style.display='none'">
 <h2>Induction</h2>
 <p>If we want to prove something for all nonnegative integers, it&rsquo;s sufficient to prove it for 0 and then prove that if it&rsquo;s true for \(n\) then it&rsquo;s true for \(n+1\). If we want to prove it for all integers, the we also need to show that if it&rsquo;s true for \(n\) then it&rsquo;s true for \(n-1\).</p>
@@ -330,7 +334,7 @@ body {
 <h2>Computing Powers Quickly</h2>
 <p>The idea is to write the exponent in binary.</p>
 <p>You start by setting the result to the multiplicative identity, which is 1 if the base is a number, and the identity matrix <b>I</b> if the base is a matrix.</p>
-<p>Then, for each bit of the exponent, starting at the left, square the result, and if the bit is a 1, multiply the result by the base.</p>
+<p>Then, for each bit of the exponent, starting at the left, square the result, and if the bit is a 1, multiply the result by the base. This works because \(x^{2a+b} = (x^a)^2 x^b\).</p>
 <p>When you&rsquo;ve exhausted the exponent, the result is your answer.</p>
 <p>You&rsquo;ve done one or two multiplications for each bit of the exponent, which is exponentially faster than doing exponent-many multiplications.</p>
 </div>
