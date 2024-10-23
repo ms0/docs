@@ -116,7 +116,7 @@ function animatefibs() {
 }
 
 function drawframe() {
-  var scale = ticker > 0 ? (1+1/128)**ticker : 1;
+  var scale = ticker > 0 ? (1+1/128)**ticker : 1+1/256/(1-ticker);
   var r;      // ratio
   var c=0;    // count of in-frame points
   var x;
