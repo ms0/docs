@@ -3,6 +3,8 @@ Documents, Slideshows, etc.
 Various formats: pdf, html, ...
 NOTE: Do not depend on github's pdf viewer, as it uses nonstandard fonts. Instead, download pdfs and use Adobe-compatible viewer.
 
+area.html is an interactive animated elementary tutorial on geometric area, with characters from fib.html
+
 dft.html is an interactive animated demonstration of discrete Fourier transforms
 
 fib.html is an interactive animated elementary tutorial on Fibonacci/Lucas sequences
