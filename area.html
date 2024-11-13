@@ -236,26 +236,31 @@ function drawperp(k) {
 
 function drawcirc(k) {
   var i;
+  var r = twidth;
   ctc.lineWidth=.5;
   ctc.strokeStyle='black';  
   ctc.setTransform(1,0,0,1,0,0)
   ctc.clearRect(0,0,cwidth,2*twidth+2*cwr);
-  ctc.translate(cwwmarg+twidth,cwr+twidth);
+  ctc.translate(cwwmarg+r,cwr+r);
   ctc.beginPath();
-  ctc.arc(0,0,twidth,0,2*Math.PI);
+  ctc.arc(0,0,r,0,2*Math.PI);
   ctc.closePath();
   ctc.stroke();
   ctc.beginPath();
   if (k) {
+    if (k < 0) {
+      k = -k;
+      r /= Math.cos(Math.PI/k);
+    }
     for (i=0; i<k; i++) {
       ctc.moveTo(0,0);
-      ctc.lineTo(twidth*Math.cos(2*i/k*Math.PI),twidth*Math.sin(2*i/k*Math.PI));
+      ctc.lineTo(r*Math.cos(2*i/k*Math.PI),r*Math.sin(2*i/k*Math.PI));
     }
     ctc.stroke();
     ctc.beginPath();
-    ctc.moveTo(twidth,0);
+    ctc.moveTo(r,0);
     for (i=1; i<k; i++) {
-      ctc.lineTo(twidth*Math.cos(2*i/k*Math.PI),twidth*Math.sin(2*i/k*Math.PI));
+      ctc.lineTo(r*Math.cos(2*i/k*Math.PI),r*Math.sin(2*i/k*Math.PI));
     }
     ctc.closePath();
     ctc.stroke();
@@ -339,6 +344,6 @@ body {
 <p>&ldquo;From the <span onclick="drawpyth(40)">animation</span>, you can see that the area of the big square is \((a+b)^2 = a^2+2ab+b^2\), and the big square is made up of four right triangles plus the inside square, with total area of \(4\frac{ab}{2}+c^2 = 2ab+c^2\). So \(a^2+2ab+b^2 = 2ab+c^2\), and so \(a^2+b^2=c^2\).&rdquo;</p>
   <p>Fi asked about other kinds of triangles, and Lu pointed out that any triangle can be split into two right triangles by <span onclick="drawperp(1)">dropping a line</span> from any vertex perpendicularly to the opposite side. It&rsquo;s then easy to see that the area is half the product of the length of that side times the length of the perpendicular. Note that if the triangle is obtuse, and the chosen vertex isn&rsquo;t the obtuse angle, the original triangle is actually the <span onclick="drawperp(2)">difference</span> between the two resulting right triangles.</p>
 <canvas id='perp' onclick="drawperp(0)" title="Click Me!"></canvas>
-  <p>It was clear that once you could find the area of any triangle, you could find the area of any polygon by breaking it up into triangles. But what about circles? Fi and Lu both knew about the famous number \(\pi\) that was the ratio of the circumference of a circle to its diameter. So, if \(r\) is the radius, then the circumference is \(2\pi r\). Lu pointed out that you could <span onclick="drawcirc(6)">break a circle into a bunch of equal wedges</span>, each of which was almost a triangle with a height nearly equal to the circle&rsquo;s radius and a base a bit less than the length of the arc. The area of each of those triangles would be nearly half the radius times the arc length. By <span onclick="drawcirc(24)">increasing the number of wedges</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, or \(\frac{1}{2}r\times 2\pi r = \pi r^2\).</p>
+  <p>It was clear that once you could find the area of any triangle, you could find the area of any polygon by breaking it up into triangles. But what about circles? Fi and Lu both knew about the famous number \(\pi\) that was the ratio of the circumference of a circle to its diameter. So, if \(r\) is the radius, then the circumference is \(2\pi r\). Lu pointed out that you could <span onclick="drawcirc(6)">break a circle into a bunch of equal wedges</span>, each of which was almost a triangle with a height nearly equal to the circle&rsquo;s radius and a base a bit smaller than the arc. The area of each of those triangles would be nearly half the radius times the arc length. By <span onclick="drawcirc(24)">increasing the number of wedges</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, or \(\frac{1}{2}r\times 2\pi r = \pi r^2\). Alternatively, you could <span onclick="drawcirc(-6)">cover the circle with equal wedges</span>, each with a height equal to the radius, and a base a bit bigger than the arc. The area of each of those triangles would be more than half the radius times the arc length. By <span onclick="drawcirc(-24)">increasing the number of triangles</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, again \(\pi r^2\).</p>
 <canvas id='circ' onclick="drawcirc(0)"></canvas>
 </body>
