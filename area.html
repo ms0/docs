@@ -1,4 +1,7 @@
+<!DOCTYPE HTML>
+<html lang="en">
 <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <script type="text/javascript" id="MathJax-script" async
   src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
 </script>
@@ -315,7 +318,7 @@ canvas {
   margin:0 auto;
 }
 body {
-  max-width:820;
+  max-width:820px;
 }
 .popup {
   background-color:white;
@@ -347,3 +350,4 @@ body {
   <p>It was clear that once you could find the area of any triangle, you could find the area of any polygon by breaking it up into triangles. But what about circles? Fi and Lu both knew about the famous number \(\pi\) that was the ratio of the circumference of a circle to its diameter. So, if \(r\) is the radius, then the circumference is \(2\pi r\). Lu pointed out that you could <span onclick="drawcirc(6)">break a circle into a bunch of equal wedges</span>, each of which was almost a triangle with a height nearly equal to the circle&rsquo;s radius and a base a bit smaller than the arc. The area of each of those triangles would be nearly half the radius times the arc length. By <span onclick="drawcirc(24)">increasing the number of wedges</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, or \(\frac{1}{2}r\times 2\pi r = \pi r^2\). Alternatively, you could <span onclick="drawcirc(-6)">cover the circle with equal triangular wedges</span>, each with a height equal to the radius, and a base a bit bigger than the arc. The area of each of those triangles would be a bit more than half the radius times the arc length. By <span onclick="drawcirc(-24)">increasing the number of triangles</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, again \(\pi r^2\).</p>
 <canvas id='circ' onclick="drawcirc(0)"></canvas>
 </body>
+</html>
