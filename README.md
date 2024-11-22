@@ -16,3 +16,5 @@ math.pdf is the unabridged math supplement to Network Security: Private Communic
 quantum.odp is a nontechnical slideshow on quantum computing
 
 secretsharing.html is a slightly interactive tutorial slide show on secret sharing
+
+trig.html is a slightly interactive animated elementary tutorial on trigonometry, a follow-on to area.html
