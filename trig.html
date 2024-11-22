@@ -1,0 +1,329 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+<script>
+/*
+  start with circle
+  show sin, cos, tan, cot, sec, csc
+  show sin(a+b), cos(a+b), tan(a+b), ...
+  define complex numbers as points in plane
+  define magnitude and argument
+  show addition and multiplication
+  show multiplication is multiplication of magnitude and addition of args
+  derivative of exp (e^x)
+  derivative of sin, cos, etc.
+  taylor series
+  exp(i\theta) = cos\theta + i sin\theta [???]
+  plotting complex functions using color for argument (but how do magnitude--3d plots?)
+*/
+
+var cwps = 12;
+var cwfigwid = 7;
+var cwr = 2;
+var cwwmarg = 2*cwps;
+
+var angle = Math.PI*5/17;
+var radius = 100;
+var pradius = 50;
+var cwidth = cwwmarg+(1+1/Math.cos(angle))*radius+2*cwr;
+var yoff = radius/Math.sin(angle);
+var cheight = yoff+radius+2*cwr;
+var alpha = Math.PI/5;
+var beta = Math.PI/3;
+
+var twidth;
+var theight;
+var swidth;
+var sheight;
+var pwidth;
+var pheight;
+var mwidth;
+var mheight;
+
+var cvt;    // for trig
+var ctt;
+var cvs;    // for sins
+var cts;
+var cvp;    // for plots
+var ctp;
+var cvm;    // for sums
+var ctm;
+
+function init() {
+  cvt = document.getElementById('trig');
+  cvt.width = cwidth;
+  cvt.height = cheight;
+  ctt = cvt.getContext('2d');
+  drawtrig(angle);
+  cvp = document.getElementById('plots');
+  pwidth = document.getElementById('body').clientWidth;
+  pheight = 2*(pradius+cwr);
+  cvp.width = pwidth;
+  cvp.height = pheight;
+  ctp = cvp.getContext('2d');    
+  drawplots(0,0);
+  twidth=80;
+  theight=60;
+  swidth=cwwmarg+4*twidth;
+  sheight=twidth+3*cwr+cwps;
+  cvs = document.getElementById('sins');
+  cvs.width = swidth;
+  cvs.height = sheight;
+  cts = cvs.getContext('2d');
+  drawsins();
+  mradius = 80;
+  mheight = mradius*Math.cos(alpha);
+  mleft = mradius*Math.sin(alpha);
+  mright = mheight*Math.tan(beta);
+  mwidth = mleft+mright;
+  cvm = document.getElementById('sums');
+  cvm.width = mwidth+2*cwr;
+  cvm.height = mheight+2*cwr;
+  ctm = cvm.getContext('2d');
+  drawsums();
+}
+
+Math.csc = Math.csc || function(x) {return 1/Math.sin(x);}
+Math.cot = Math.cot || function(x) {return 1/Math.tan(x);}
+Math.sec = Math.sec || function(x) {return 1/Math.cos(x);}
+
+function drawtrig(angle) {
+  var cos = Math.cos(angle);
+  var sin = Math.sin(angle);
+  ctt.lineWidth=.5;
+  ctt.strokeStyle='black';
+  ctt.setTransform(1,0,0,1,0,0);
+  ctt.clearRect(0,0,cwidth,cheight);
+  ctt.translate(cwwmarg+cwr+radius,yoff);
+  ctt.beginPath();
+  ctt.arc(0,0,radius,0,2*Math.PI);
+  ctt.closePath();
+  ctt.stroke();
+  ctt.beginPath();
+  ctt.moveTo(0,0);
+  ctt.lineTo(radius/cos,0);
+  ctt.lineTo(0,-radius/sin);
+  ctt.closePath();
+  ctt.stroke();
+  ctt.beginPath();
+  ctt.moveTo(0,0);
+  ctt.lineTo(radius*cos,-radius*sin);
+  ctt.moveTo(radius*cos,0);
+  ctt.lineTo(radius*cos,-radius*sin);
+  ctt.stroke();
+  ctt.fillStyle='black';
+  ctt.font = cwps+"px serif";
+  ctt.textAlign='right';
+  ctt.fillText('1',radius*cos/2-cwr,-radius*sin/2);
+  ctt.fillText('sin',radius*cos-cwr,cwps/2-radius*sin/2);
+  ctt.fillText('csc',-cwr,-radius/sin/2);
+  ctt.font = "italic "+cwps+"px serif";
+  ctt.fillText('\u03b8',radius*Math.cos(angle/3)-3*cwr,-radius*Math.sin(angle/3));
+  ctt.font = cwps+"px serif";
+  ctt.textAlign='center';
+  ctt.fillText('cos',radius*cos/2,-cwr);
+  ctt.fillText('sec',radius/cos/2,cwps);
+  ctt.textAlign='left';
+  ctt.fillText('tan',radius*(cos+1/cos)/2+cwr,-radius*sin/2);
+  ctt.fillText('cot',radius*cos/2+cwr,-radius*(sin+1/sin)/2);
+}
+
+var timer;
+var ticker;
+
+function drawplots(angle,offset) {
+  timer = clearInterval(timer);
+  ticker = 0;
+  drawsine(0,0);    
+  timer = setInterval(drawsine,25,angle,offset);
+}
+
+function drawsine(maxangle,offset) {
+  var angle = ticker*Math.PI/90;
+  if (angle > maxangle) {
+    timer = clearInterval(timer);
+    return;
+  }    
+  ctp.lineWidth=.5;
+  ctp.strokeStyle='black';
+  ctp.fillStyle='red';
+  ctp.setTransform(1,0,0,1,0,0);
+  ctp.clearRect(0,0,pwidth,pheight);
+  ctp.translate(cwr+pradius,pradius+cwr);
+  ctp.beginPath();
+  ctp.arc(0,0,pradius,0,2*Math.PI);
+  ctp.closePath();
+  ctp.stroke();
+  var c = pradius*Math.cos(angle);
+  var s = -pradius*Math.sin(angle);
+  ctp.beginPath();
+  ctp.moveTo(c,s);
+  offset ? ctp.lineTo(0,s) : ctp.lineTo(c,0);
+  ctp.stroke();
+  ctp.beginPath();
+  ctp.arc(c,s,2,0,2*Math.PI);
+  ctp.closePath();
+  ctp.fill();
+  ctp.translate(cwwmarg+pradius,0);
+  ctp.beginPath();
+  ctp.moveTo(0,-pradius*Math.sin(offset));
+  for (a=0; (a+=Math.PI/180)<=angle; ) {
+    ctp.lineTo(pradius*a,-pradius*Math.sin(a+offset));
+  }
+  ctp.stroke();    
+  ++ticker;
+}
+
+function drawsins() {
+  var left=2*twidth;
+  var right=twidth;
+  var xright=2.5*twidth;
+  cts.lineWidth=.5;
+  cts.strokeStyle='black';
+  cts.setLineDash([]);
+  cts.font = cwps+"px serif";
+  cts.setTransform(1,0,0,1,0,0);
+  cts.clearRect(0,0,cwidth,sheight);
+  cts.translate(cwwmarg+3*cwps,2*cwr+twidth);
+  cts.beginPath();
+  cts.moveTo(theight,0);
+  cts.lineTo(xright,0);
+  cts.lineTo(0,-twidth);
+  cts.closePath();
+  cts.stroke();
+  cts.beginPath();
+  cts.moveTo(0,-twidth);
+  cts.lineTo(0,0);
+  cts.stroke();
+  cts.setLineDash([1,1]);
+  cts.beginPath();
+  cts.moveTo(0,0);
+  cts.lineTo(theight,0);
+  cts.stroke();
+  cts.textAlign='left';
+  cts.fillText('\u03b3',theight,-cwr);
+  cts.fillText('\u03b2',cwps+3*cwr,cwps-twidth+4*cwr);
+  cts.font = "italic "+cwps+"px serif";
+  cts.textAlign='center';
+  cts.fillText('b',(theight+xright)/2,cwps);
+  cts.fillText('c',xright/2,-theight/2-cwps);
+  cts.textAlign='right';
+  cts.fillText('a',theight/2-cwr,-theight/2);
+  cts.font = cwps+"px serif";
+  cts.fillText('\u03b1',xright-2*cwps,-cwr);
+  cts.fillText('sin \u03b3',-cwr,-(theight+cwfigwid)/2);
+  var w = cts.measureText('sin \u03b3').width;
+  cts.font = "italic "+cwps+"px serif";
+  cts.fillText('a  ',-w,-(theight+cwfigwid)/2);
+  w = cts.measureText('a  ').width;
+  cts.font = cwps+"px serif";
+  w += cts.measureText('cos \u03b3').width;
+  cts.fillText('cos \u03b3',(theight+w)/2,cwps);
+  cts.font = "italic "+cwps+"px serif";
+  cts.textAlign='left';
+  cts.fillText('a',(theight-w)/2,cwps);
+}
+
+function drawsums() {
+  ctm.setTransform(1,0,0,1,0,0);
+  ctm.clearRect(0,0,mwidth+2*cwr,mheight+2*cwr);
+  ctm.translate(cwr+mleft,cwr);
+  ctm.lineWidth = .5;
+  ctm.setLineDash([]);
+  ctm.strokeStyle='black';
+  ctm.fillStyle = 'black';  
+  ctm.beginPath();
+  ctm.moveTo(0,0);
+  ctm.lineTo(-mleft,mheight);
+  ctm.lineTo(mright,mheight);
+  ctm.closePath()
+  ctm.stroke()
+  ctm.setLineDash([1,1]);
+  ctm.beginPath();
+  ctm.moveTo(0,0);
+  ctm.lineTo(0,mheight);
+  ctm.stroke()
+  ctm.font = "italic "+cwps+"px serif";
+  var al = '\u03b1';
+  var be = '\u03b2';
+  var xa = ctm.measureText(al).width;
+  var xb = ctm.measureText(be).width;
+  ctm.textAlign='right';
+  ctm.fillText(al,-cwfigwid/2,cwps+cwfigwid);
+  ctm.textAlign='left';
+  ctm.fillText(be,cwfigwid/2,cwps+cwfigwid);
+  var tan = 'tan ';
+  var sin = 'sin ';
+  var cos = 'cos ';
+  var op = '(';
+  var pl = ' + ';
+  var cp = ')';
+  ctm.font = cwps+"px serif";
+  ctm.textAlign='right'
+  ctm.fillText('1',-(mleft+cwfigwid)/2,(mheight+cwfigwid)/2)
+  var xtan = ctm.measureText(tan).width;
+  var xsin = ctm.measureText(sin).width;
+  var xcos = ctm.measureText(cos).width;
+  var xop = ctm.measureText(op).width;
+  var xcp = ctm.measureText(cp).width;
+  var xpl = ctm.measureText(pl).width;
+  ctm.font = "italic "+cwps+"px serif";  
+  var xtanb = xtan+xb;
+  var xcosa = xcos+xa;
+  var xsina = xsin+xa;
+  var xcosatanb = xcosa+xtanb;
+  ctm.textAlign='left';
+  ctm.fillText(al,cwr+xcos,(mheight+cwps)/2);
+  ctm.fillText(al,(-mleft+xsin)/2,mheight-cwr);
+  ctm.fillText(al,(mright-xcosatanb)/2-cwfigwid+xcos,mheight-cwr);
+  ctm.fillText(be,(mright+xcosatanb)/2-xb-cwr,mheight-cwr);
+  ctm.font = cwps+"px serif";
+  ctm.fillText(cos,cwr,(mheight+cwps)/2);
+  ctm.fillText(sin,(-mleft-xsin)/2,mheight-cwr);
+  ctm.fillText(cos,(mright-xcosatanb)/2-cwfigwid,mheight-cwr);
+  ctm.fillText(tan,(mright-xcosatanb)/2+xcosa-cwr,mheight-cwr);
+}
+</script>
+<style>
+span {
+  text-decoration:underline;
+  cursor:context-menu;
+}
+h1 {
+  text-align:center;
+  font-size:18pt;
+}
+h2 {
+  text-align:center;
+  font-size:14pt;
+}
+canvas {
+  display:block;
+  margin:0 auto;
+}
+body {
+  max-width:820px;
+}
+</style>
+</head>
+<body id='body' onload="init()" onresize="init()">
+<h1>Fi and Lu tackle trigonometry</h1>
+<p>Lu had been hearing about something called &ldquo;trigonometry.&rdquo; Mom explained, &ldquo;Just like geology is the study of Earth, and geometry is the study of measuring Earth, trigonometry is the study of measuring trigons.&rdquo; Fi asked, &ldquo;What&rsquo;s a trigon?&rdquo; Mom replied, &ldquo;It&rsquo;s a three-sided polygon of course, also known as a triangle.&rdquo;</p>
+<p>Mom continued, &ldquo;Actually, trigonometry defines six functions of an angle, based on a right triangle containing that angle. Each of those functions gives the ratio of the lengths of two of the sides of the right triangle. Since a triangle has three sides, there are three choices for the numerator, and then the remaining two sides give two choices for the denominator, so six possible ratios. The six functions are sine (opposite side / hypotenuse), cosine (adjacent side / hypotenuse), tangent (opposite side / adjacent side), cotangent (adjacent side / opposite side), secant (hypotenuse / adjacent side), cosecant (hypotenuse / opposite side). When written mathematically, they are sin, cos, tan, cot, sec, csc, respectively.&rdquo; Mom drew the picture below, labeling the radius of the circle as 1.</p>
+<canvas id='trig'></canvas>
+<p>Mom let Fi and Lu examine the picture for a while. &ldquo;One thing I haven&rsquo;t mentioned is how to measure an angle. Normal people measure angles in degrees. The idea is to divide a circle into a number of equal parts so that common angles have an integral number of degrees. \(2^3\times 3^2\times 5 = 360\) is a good choice since it is divisible by a lot of small numbers. With that choice, a straight angle is 180&deg;, a right angle is 90&deg;, an isosceles right triangle has two 45&deg; angles, an equilateral triangle has 60&deg angles, a regular hexagon has 120&deg angles, and a regular pentagon has 108&deg angles. But we mathematicians aren&rsquo;t normal people; we measure angles by the length of the arc of a circle with radius 1. So \(1^\circ = \frac{\pi}{180}\). With our system, a straight angle is \(\pi\), a right angle is \(\frac{\pi}{2}\), an isosceles right triangle has two \(\frac{\pi}{4}\) angles, an equilateral triangle has three \(\frac{\pi}{3}\) angles, a regular hexagon has six \(\frac{2\pi}{3}\) angles, and a regular pentagon has five \(\frac{3\pi}{5}\) angles. To a mathematician, this method of measuring angles is the most natural, as it means that \(\sin\theta\approx\theta\) for small \(\theta\). You might notice that once \(\theta\) increases beyond \(\frac{\pi}{2}\), the cosine function goes negative. In fact, \(\cos\theta = -\cos(\pi-\theta)\), while \(\sin\theta = \sin(\pi-\theta)\). In the picture, angles increase counterclockwise and decrease clockwise; \(\cos(-\theta) = \cos\theta\), while \(\sin(-\theta) = -\sin\theta\). Of course, all six functions have period \(2\pi\), since every time you go around the circumference of the circle (an angle of \(2\pi\)) you end up back where you started. For example, here&rsquo;s the <span onClick='drawplots(4*Math.PI,0)'>sine function</span> and here&rsquo;s the <span onClick='drawplots(4*Math.PI,Math.PI/2)'>cosine function</span>.</p>
+<canvas id='plots'></canvas>
+<p>&ldquo;There are many relationships between these six functions. Just from the definitions of the functions as ratios, it&rsquo;s quite clear that \(\tan\theta=\frac{\sin\theta}{\cos\theta}\), \(\sec\theta=\frac{1}{\cos\theta}\), \(\csc\theta=\frac{1}{\sin\theta}\), and \(\cot\theta=\frac{1}{\tan\theta}\). And from the observation that if \(\theta\) is one of the acute angles in a right triangle, the other acute angle is \(\frac{\pi}{2}-\theta\); we see that \(\cos \theta = \sin(\frac{\pi}{2}-\theta)\), \(\cot \theta = \tan(\frac{\pi}{2}-\theta)\), and \(\csc \theta = \sec(\frac{\pi}{2}-\theta)\). Finally, looking at the right triangles in the picture, the Pythagorean theorem shows that \(\sin^2\theta + \cos^2\theta = 1\), \(1+\tan^2\theta = \sec^2\theta\), \(1+\cot^2\theta = \csc^2\theta\), and \(\sec^2\theta+\csc^2\theta=(\tan\theta+\cot\theta)^2\).&rdquo;</p>
+<p>Lu wondered, &ldquo;What has any of this to do with measuring triangles?&rdquo; Mom replied, &ldquo;Remember how to compute the area of a triangle by dropping a perpendicular from a vertex to a side? You need to know how long that perpendicular is. Well, you can compute it using the sine function.&rdquo;</p>
+<canvas id='sins'></canvas>
+  <p>&ldquo;In the picture above, the perpendicular&rsquo;s length is \(a\sin\gamma\), and so the area of the triangle is \(\frac{1}{2}ba\sin\gamma\). Since it didn&rsquo;t matter from which vertex we dropped a perpendicular, the area is also \(\frac{1}{2}ac\sin\beta\) and \(\frac{1}{2}cb\sin\alpha\). If we divide each of these by \(\frac{1}{2}abc\), we get the famous law of sines, which says that in any triangle, \(\frac{\sin\alpha}{a} = \frac{\sin\beta}{b} = \frac{\sin\gamma}{c}\), <i>i.e.</i>, the sine of an angle divided by the length of its opposite side is constant for any given triangle.&rdquo;</p>
+<p>Mom continued. &ldquo;There is also the law of cosines, which is a generalization of the Pythagorean theorem. Looking at the picture above, the dotted line is \(a\cos\gamma\), and the base of the big right triangle is \(b-a\cos\gamma\) (in this case \(\cos\gamma\) is negative!). The Pythagorean theorem then says \(c^2 = (b-a\cos\gamma)^2 + (a\sin\gamma)^2 = b^2-2ab\cos\gamma+a^2\cos^2\gamma+a^2\sin^2\gamma = b^2 - 2ab\cos\gamma + a^2=a^2+b^2-2ab\cos\gamma\). This is the law of cosines: the square of the length of any side of a triangle is equal to the sum of the squares of the lengths of the other two sides minus twice the product of those lengths and the cosine of the angle between those sides.&rdquo;</p>
+<p>Mom wanted to introduce one more important set of relationships. &ldquo;We can use the law of sines to find formulas for sines and cosines of sums of angles. This will prove important when we investigate complex numbers and calculus.</p>
+<canvas id='sums'></canvas>
+<p>&ldquo;In the triangle above, the law of sines tells us that \(\frac{\sin(\alpha+\beta)}{\sin\alpha+\cos\alpha\tan\beta} = \frac{\sin(\frac{\pi}{2}-\beta)}{1}\), so, noting that \(\sin(\frac{\pi}{2}-\beta) = \cos\beta\) and that \(\tan\beta = \frac{\sin\beta}{\cos\beta}\), we see that \(\sin(\alpha+\beta) = \sin\alpha\cos\beta+\cos\alpha\sin\beta\). We can then go on to deduce that \(\cos(\alpha+\beta) = \sin(\frac{\pi}{2}-\alpha-\beta) = \sin(\frac{\pi}{2}-\alpha)\cos(-\beta) + \cos(\frac{\pi}{2}-\alpha)\sin(-\beta) = \cos\alpha\cos\beta-\sin\alpha\sin\beta\). From these relations, it&rsquo;s not hard to show that \(\tan(\alpha+\beta)=\frac{\tan\alpha+\tan\beta}{1-\tan\alpha\tan\beta}\). We&rsquo;ll leave that as an exercise.&rdquo;
+</body>
+</html>
