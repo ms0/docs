@@ -6,7 +6,6 @@
   src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
 </script>
 <script>
-
 var cwps=12;             // point size
 var cwfigwid=7;          // figure width
 var cwr=2;               // radius of dots
@@ -113,7 +112,7 @@ function drawtriangles(dt) {
   ctt.translate(cwwmarg+twidth/2,cwr+theight/2);
   ctt.fillText('a',-cwps/2,theight/2+cwps);
   ctt.fillText('b',-twidth/2-cwps,cwps/2)
-  drawtriangle(ctt);
+  drawtriangle(ctt,0);
   if (dt) {
     if (!timer) {
       ticker = 0;
@@ -121,7 +120,7 @@ function drawtriangles(dt) {
     } else {
       if (++ticker <= dt) { 
 	ctt.rotate(-Math.PI*ticker/dt);
-	drawtriangle(ctt);
+	drawtriangle(ctt,0);
       }
       if (ticker >= dt) {
 	timer=clearInterval(timer);
@@ -137,9 +136,9 @@ function drawpyth(dt) {
   ctp.font = "italic "+cwps+"px serif";
   ctp.translate(cwwmarg+twidth/2,cwr+cwps+twidth+theight/2);
   ctp.fillText('a',-cwps/2,theight/2+cwps);
-  ctp.fillText('b',-twidth/2-cwps,cwps/2);
+  ctp.fillText('b',-twidth/2-cwps,cwps/4);
   ctp.fillText('c',cwps/4,-cwps/4);
-  drawtriangle(ctp);
+  drawtriangle(ctp,'lightgray');
   if (dt) {
     if (!ptimer) {
       pticker = 0;
@@ -148,34 +147,34 @@ function drawpyth(dt) {
       ++pticker;
       var r = pticker/dt;
       if (r >= 1) {
-	ctp.fillText('a',twidth/2+theight+cwps/4,(twidth-theight-cwps)/2);
+	ctp.fillText('a',twidth/2+theight+cwps/2,(theight-twidth+cwps)/2);
 	ctp.fillText('b',(twidth+theight)/2-cwps/4,theight/2+cwps);
-	ctp.fillText('c',(twidth+theight)/2-cwps,(theight-twidth)/2-cwps/4);
+	ctp.fillText('c',(twidth+theight-cwps)/2,(theight-twidth)/2-cwps/4);
       }
       if (r >= 2) {
-	ctp.fillText('a',(twidth+theight-cwps)/2,-twidth-theight/2-cwps/4);
-	ctp.fillText('b',twidth/2+theight+cwps/4,-twidth+cwps/4);
-	ctp.fillText('c',theight-3*cwps/4,-twidth+cwps);
+	ctp.fillText('a',(twidth+theight-cwps)/2,-twidth-theight/2-cwps/2);
+	ctp.fillText('b',twidth/2+theight+cwps/2,-twidth+cwps/4);
+	ctp.fillText('c',theight-cwfigwid,-twidth+3*cwps/4);
       }
       if (r >= 3) {
-	ctp.fillText('a',-twidth/2-cwps,-(twidth+theight)/2);
-	ctp.fillText('b',(theight-twidth)/2-cwps/4,-twidth-theight/2-cwps/4);
+	ctp.fillText('a',-twidth/2-cwps,-(twidth+theight-cwps/2)/2);
+	ctp.fillText('b',(theight-twidth)/2-cwps/4,-twidth-theight/2-cwps/2);
 	ctp.fillText('c',(theight-twidth)/2+cwps/4,-(theight+twidth)/2+3*cwps/4);
       }
       var f = Math.min(r,1)
       ctp.translate((twidth+theight)/2*f,(theight-twidth)/2*f);
       ctp.rotate(-Math.PI/2*f);
-      drawtriangle(ctp);
+      drawtriangle(ctp,'lightgray');
       f = Math.min(r-1,1);
       if (f >= 0) {
 	ctp.translate((twidth+theight)/2*f,(theight-twidth)/2*f);
 	ctp.rotate(-Math.PI/2*f);
-	drawtriangle(ctp);
+	drawtriangle(ctp,'lightgray');
 	f = Math.min(r-2,1);
 	if (f >= 0) {
 	  ctp.translate((twidth+theight)/2*f,(theight-twidth)/2*f);
 	  ctp.rotate(-Math.PI/2*f);
-	  drawtriangle(ctp);
+	  drawtriangle(ctp,'lightgray');
 	  if (r > 3) {
 	    ptimer=clearInterval(ptimer);
 	  }
@@ -185,7 +184,73 @@ function drawpyth(dt) {
   }
 }
 
-function drawtriangle(ctx) {
+function drawpyth2(dt) {
+  ctp.setTransform(1,0,0,1,0,0);
+  ctp.clearRect(0,0,cwidth,pheight);
+  ctp.fillStyle='black';
+  ctp.strokeStyle='black';
+  ctp.lineWidth=.5;
+  ctp.font = "italic "+cwps+"px serif";
+  ctp.translate(cwwmarg+(twidth+theight)/2,cwr+cwps+(twidth+theight)/2);
+  ctp.beginPath();
+  ctp.moveTo(-(twidth+theight)/2,(twidth+theight)/2);
+  ctp.lineTo((twidth+theight)/2,(twidth+theight)/2);
+  ctp.lineTo((twidth+theight)/2,-(twidth+theight)/2);
+  ctp.lineTo(-(twidth+theight)/2,-(twidth+theight)/2);
+  ctp.closePath();
+  ctp.stroke();
+  ctp.fillText('a',-(theight+cwps)/2,(theight+twidth)/2+cwps);
+  ctp.fillText('b',(twidth-cwps/2)/2,(theight+twidth)/2+cwps);
+  ctp.fillText('a',-(twidth+theight)/2-cwps,cwps/4-theight/2);
+  ctp.fillText('b',-(twidth+theight)/2-cwps,(twidth+cwps/2)/2);
+  if (!ptimer) {
+    pticker = -dt;
+    ptimer=setInterval(drawpyth2,25,dt);
+  } else {
+    ++pticker;
+  }
+  var r = pticker/dt;
+  if (r < 0) {
+    ctp.fillText('a',(twidth-cwps)/2,-(twidth+theight+cwps)/2);
+    ctp.fillText('b',(twidth+theight+cwps)/2,cwps/4-twidth/2);
+    ctp.fillText('c',-theight/2+cwps/4,twidth/2-cwps/4);
+    ctp.fillText('c',twidth/2-cwps/2,theight/2-cwfigwid/2);
+    ctp.fillText('c',theight/2-cwfigwid,-twidth/2+3*cwps/4);
+    ctp.fillText('c',-twidth/2+cwps/4,-theight/2+3*cwps/4);
+  }
+  if (r < 1) {
+    ctp.fillText('a',(twidth+theight+cwps)/2,(theight+cwps)/2);
+    ctp.fillText('b',-(twidth+cwps/2)/2,-(twidth+theight+cwps)/2);
+  }
+  if (r >= 2) {
+    ctp.fillText('a',(twidth+theight+cwps)/2,cwps/4-theight/2);
+    ctp.fillText('b',(twidth+theight+cwps)/2,(twidth+cwps/2)/2);
+    ctp.fillText('a',-(theight+cwps/2)/2,-(theight+twidth+cwps)/2);
+    ctp.fillText('b',(twidth-cwps/2)/2,-(theight+twidth+cwps)/2);
+  }
+  var t1 = r < 0 ? 0 : r < 1 ? r : 1;
+  var t2 = r < t1 ? 0 : r-t1;
+  ctp.translate(-theight/2,twidth/2);
+  drawtriangle(ctp,'lightgray');
+  var offy = -theight*t2;
+  ctp.translate((twidth+theight)/2,(theight-twidth)/2+offy);
+  ctp.rotate(-Math.PI/2);
+  drawtriangle(ctp,'lightgray');
+  ctp.translate(offy,0);
+  var offx = -twidth*t1;
+  offy = -theight*t1;
+  ctp.translate((twidth+theight)/2+offx,(theight-twidth)/2+offy);
+  ctp.rotate(-Math.PI/2);
+  drawtriangle(ctp,'lightgray');
+  ctp.translate((twidth+theight)/2+offy-twidth*t2,(theight-twidth)/2-offx);
+  ctp.rotate(-Math.PI/2);
+  drawtriangle(ctp,'lightgray');
+  if (r >= 2) {
+    ptimer=clearInterval(ptimer);
+  }
+}
+
+function drawtriangle(ctx,fillstyle) {
   ctx.lineWidth=.5;
   ctx.strokeStyle='black';
   ctx.beginPath();
@@ -194,6 +259,12 @@ function drawtriangle(ctx) {
   ctx.lineTo(-twidth/2,-theight/2);
   ctx.closePath();
   ctx.stroke();
+  if (fillstyle) {
+    var fs = ctx.fillStyle;
+    ctx.fillStyle = fillstyle;
+    ctx.fill();
+    ctx.fillStyle = fs;
+  }
 }
 
 function drawperp(k) {
@@ -344,7 +415,7 @@ body {
 <canvas id='triangles' onclick="drawtriangles(40)" title="Click Me!"></canvas>
 <p>Mom had been listening, and now decided to show the kids one of the most famous theorems in all of mathematics. &ldquo;Let me show you the Pythagorean Theorem. It says that if the sides of a right triangle are \(a\), \(b\), and \(c\), with \(c\) being the hypotenuse, then \(a^2 + b^2 = c^2\). There are many proofs of this theorem, but now that you know how to calculate the area of rectangles and right triangles, we need just a tiny bit of algebra: \((a+b)^2 = a^2+2ab+b^2\). Remember that \(x^2\) means \(x\times x\) and \(xy\) means \(x\times y\).&rdquo;</p>
 <canvas id='pyth' onclick="drawpyth(40)" title="Click Me!"></canvas>
-<p>&ldquo;From the <span onclick="drawpyth(40)">animation</span>, you can see that the area of the big square is \((a+b)^2 = a^2+2ab+b^2\), and the big square is made up of four right triangles plus the inside square, with total area of \(4\frac{ab}{2}+c^2 = 2ab+c^2\). So \(a^2+2ab+b^2 = 2ab+c^2\), and so \(a^2+b^2=c^2\).&rdquo;</p>
+  <p>&ldquo;From the <span onclick="drawpyth(40)">animation</span>, you can see that the area of the big square is \((a+b)^2 = a^2+2ab+b^2\), and the big square is made up of four gray right triangles plus the inside white square, with total area of \(4\frac{ab}{2}+c^2 = 2ab+c^2\). So \(a^2+2ab+b^2 = 2ab+c^2\), and so \(a^2+b^2=c^2\). Algebra isn&rsquo;t really needed; just watch the <span onclick="drawpyth2(40)">transformation</span> of the white area from \(c^2\) to \(a^2+b^2\).&rdquo;</p>
   <p>Fi asked about other kinds of triangles, and Lu pointed out that any triangle can be split into two right triangles by <span onclick="drawperp(1)">dropping a line</span> from any vertex perpendicularly to the opposite side. It&rsquo;s then easy to see that the area is half the product of the length of that side times the length of the perpendicular. Note that if the triangle is obtuse, and the chosen vertex isn&rsquo;t the obtuse angle, the original triangle is actually the <span onclick="drawperp(2)">difference</span> between the two resulting right triangles.</p>
 <canvas id='perp' onclick="drawperp(0)" title="Click Me!"></canvas>
   <p>It was clear that once you could find the area of any triangle, you could find the area of any polygon by breaking it up into triangles. But what about circles? Fi and Lu both knew about the famous number \(\pi\) that was the ratio of the circumference of a circle to its diameter. So, if \(r\) is the radius, then the circumference is \(2\pi r\). Lu pointed out that you could <span onclick="drawcirc(6)">break a circle into a bunch of equal wedges</span>, each of which was almost a triangle with a height nearly equal to the circle&rsquo;s radius and a base a bit smaller than the arc. The area of each of those triangles would be nearly half the radius times the arc length. By <span onclick="drawcirc(24)">increasing the number of wedges</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, or \(\frac{1}{2}r\times 2\pi r = \pi r^2\). Alternatively, you could <span onclick="drawcirc(-6)">cover the circle with equal triangular wedges</span>, each with a height equal to the radius, and a base a bit bigger than the arc. The area of each of those triangles would be a bit more than half the radius times the arc length. By <span onclick="drawcirc(-24)">increasing the number of triangles</span>, the sum of all those areas would get arbitrarily close to half the radius times the circumference, again \(\pi r^2\).</p>
