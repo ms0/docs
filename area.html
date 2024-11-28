@@ -249,9 +249,9 @@ function drawpyth2(dt) {
   drawtriangle(ctp,'lightgray');
   if (dt > 0 && r >= 2) {
     clearInterval(ptimer);
-    ptimer=setInterval(drawpyth2,25,-dt);
     pticker *= 2;
-  } else if (pticker < -adt) {
+    ptimer=setInterval(drawpyth2,25,-dt);
+  } else if (pticker < 0) {
     ptimer=clearInterval(ptimer);
   }
 }
