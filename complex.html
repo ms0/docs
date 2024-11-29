@@ -34,7 +34,9 @@ leave resets to op=0, cursor none, glued set to 0
 ****************************************************************/
 
 function init() {
-  cwidth = document.getElementById('body').clientWidth;
+  var b = document.getElementById('body');
+  b.addEventListener('touchstart',function () {});
+  cwidth = b.clientWidth;
   cvs = document.getElementById('plane');
   cvs.width = cwidth;
   cvs.height = cheight;
