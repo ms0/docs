@@ -1,0 +1,208 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+<script>
+var cwps = 12;
+var cwfigwid = 7;
+var cwr = 2;
+var cwwmarg = 2*cwps;
+
+var cwidth;
+var cheight = 410;
+
+var cvs;
+var ctx;
+
+var op = 0;    // 1: add, 2: multiply
+var showrtheta;    // >0: show line from 0; >1: show r,theta values
+var glued;    // 1: x0,y0 set
+var x0 = 0;    // clicked x
+var y0 = 0;    // clicked y
+
+/****************************************************************
+initially, glued=0, point displayed on move
+  click causes point to be fixed, cursor crosshair
+leave resets to op=0, cursor none, glued set to 0
+ clicking add span sets op=1, glued=0
+ clicking mul span sets op=2, glued=0
+ then, click causes point to be fixed, glued=1, but can select other point
+ clicking on realized span, sets showrtheta to 2, op=0, glued=0 and redisplays x0,y0
+****************************************************************/
+
+function init() {
+  cwidth = document.getElementById('body').clientWidth;
+  cvs = document.getElementById('plane');
+  cvs.width = cwidth;
+  cvs.height = cheight;
+  ctx = cvs.getContext('2d');
+  cvs.addEventListener('mousemove',showpoint);
+  cvs.addEventListener('click',glue);
+  cvs.addEventListener('mouseleave',leave);
+  drawrealline();
+  showrtheta = 0;
+  op = 0;
+  glued = 0;
+}
+
+function glue(event) {
+  if (!glued) {
+    showpoint(event);
+    glued = 1;
+  } else {
+    event.target.style.cursor='crosshair';
+  }
+}
+
+function leave(event) {
+  event.target.style.cursor='none';
+  glued = 0;
+}
+
+function set2coords() {
+  showrtheta = 0;
+  drawrealline();
+  drawpoint(x0,y0);
+}
+
+function set2add() {
+  glued = 0;
+  op = 1;
+  showrtheta = 1;
+  drawrealline();
+  drawpoint(x0,y0);
+}
+
+function set2rtheta() {
+  op = 0;
+  showrtheta = 2;
+  drawrealline();
+  drawpoint(x0,y0);
+}
+
+function set2mul() {
+  glued = 0;
+  op = 2;
+  showrtheta = 2;
+  drawrealline();
+  drawpoint(x0,y0);
+}
+
+function drawrealline() {
+  ctx.lineWidth = .5;
+  ctx.strokeStyle='black';
+  ctx.fillStyle='black';
+  ctx.setTransform(1,0,0,1,cwidth/2,cheight/2);
+  ctx.clearRect(-cwidth/2,-cheight/2,cwidth,cheight);
+  ctx.beginPath();
+  ctx.moveTo(-cwidth/2,0);
+  ctx.lineTo(cwidth/2,0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0,0,3,0,2*Math.PI);
+  ctx.closePath();
+  ctx.fill();
+  var x;
+  ctx.font = cwps+"px serif";
+  ctx.textAlign = 'center';
+  for (x = -4; x < 5; x++) {
+    ctx.fillText(x,x*100,cwps+cwr);
+  }
+}
+
+function showpoint(event) {
+  if (event.target.style.cursor == 'crosshair') return;
+  drawrealline();
+  var rect = event.target.getBoundingClientRect();
+  var x = event.clientX-rect.x-cwidth/2;
+  var y = event.clientY-rect.y-cheight/2;
+  if (!glued || !op) {
+    drawpoint(x0=x,y0=y);
+  } else {
+    op == 1 ? drawsum(x0,y0,x,y) : drawproduct(x0,y0,x,y);
+  }
+}
+
+function drawpoint(x,y) {
+  ctx.beginPath();
+  ctx.arc(x,y,2,0,2*Math.PI);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillText('\u3008'+(x/100).toFixed(2)+','+(-y/100).toFixed(2)+'\u3009',x,y+cwps);
+  if (showrtheta) {
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    if (showrtheta > 1) {
+      var d = Math.sqrt(x**2+y**2);
+      var a = Math.atan2(-y,x)/Math.PI*180;
+      ctx.fillText('distance = '+(d/100).toFixed(2),x,y+2*cwps);
+      ctx.fillText('direction = '+Math.round(a)+'\u00b0',x,y+3*cwps);
+    }
+  }
+}
+
+function drawsum(x1,y1,x2,y2) {
+  showrtheta = 1;
+  drawpoint(x1,y1);
+  drawpoint(x2,y2);
+  drawpoint(x1+x2,y1+y2);
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x1+x2,y1+y2);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+}
+
+function drawproduct(x1,y1,x2,y2) {
+  showrtheta = 2;
+  drawpoint(x1,y1);
+  drawpoint(x2,y2);
+  drawpoint((x1*x2-y1*y2)/100,(x1*y2+x2*y1)/100);
+}
+</script>
+
+<style>
+span {
+  text-decoration:underline;
+  cursor:context-menu;
+}
+h1 {
+  text-align:center;
+  font-size:18pt;
+}
+h2 {
+  text-align:center;
+  font-size:14pt;
+}
+canvas {
+  display:block;
+  margin:0 auto;
+  cursor:none;
+}
+body {
+  max-width:820px;
+}
+</style>
+</head>
+<body id='body' onload="init()" onresize="init()">
+</body>
+<h1>Fi and Lu escape the real line</h1>
+<p>Fi wondered if there were any numbers besides those on the real line. She knew that any number between two numbers on the real line is also on the real line, and that the line extends infinitely far in both directions. Could there be numbers beyond that, and how would you get to them?</p>
+  <p>Lu, thinking about area, wondered if you could have numbers above and below the real line. What would it mean to add them? To multiply them? She knew that you could specify a point on a plane with two real numbers called <span onclick='set2coords()'>coordinates</span>: one to specify its horizontal position, and one to specify its vertical position.</p>
+<canvas id='plane'></canvas>
+  <p> A natural way to add two points would be to <span onclick="set2add()">add the corresponding coordinates</span>. But how would you multiply two points? Since you&rsquo;d like \(2\langle a,b\rangle = \langle a,b\rangle+\langle a,b\rangle = \langle 2a,2b\rangle\), it would make sense if points on the real line (those with vertical coordinates equal to 0) should act like real numbers: \(\langle r,0\rangle\times\langle a,b\rangle = \langle ra,rb\rangle\). Lu <span title='click to show direction and distance' onclick='set2rtheta()'>realized that each point in the plane has a nonnegative distance from 0 (\(\langle 0,0\rangle\)) and a direction relative to the real line</span> (the angle being 0 for positive numbers and \(\pi\) for negative numbers, but indeterminate for 0, although any integer multiple of \(2\pi\) can be added to any angle without changing its direction). However you define multiplication, it has to agree with multiplication of numbers on the real line. For numbers on the real line, the distances are multiplied, and the angles are added or subtracted. But subtraction wouldn&rsquo;t work for general points on the plane, because then multiplication wouldn&rsquo;t be commutative. So what if you try to define multiplication by <span onclick="set2mul()">multiplying the distances and adding the angles</span>? The fact that the angle for 0 is indeterminate doesn&rsquo;t matter, because the distance will always stay 0 when multiplied. Otherwise, you can write \(\langle a,b\rangle\) as \(r\langle\cos\theta,\sin\theta\rangle\), where \(r=\sqrt{a^2+b^2}\) is the distance and \(\theta=\mathrm{atan2}(b,a)\) is the direction. Using this format, and remembering the formulas for sine and cosine of the sum of two angles, for two points \(q\langle c,s\rangle\) and \(r\langle d,t\rangle\) you have \(q\langle c,s\rangle\times r\langle d,t\rangle = qr\langle cd-st,ct+ds\rangle\). You don&rsquo;t really need to separately compute \(q\) and \(r\), since this just works out to be \(\langle v,w\rangle\times\langle x,y\rangle = \langle vx-wy,vy+wx\rangle\).  It&rsquo;s not hard to see that this rule is equivalent to treating point \(\langle x,y\rangle\) as \(x+yi\) with the usual properties of addition and multiplication (associativity, commutativity, distributivity of multiplication over addition) and the understanding that \(i^2=-1\). These are complex numbers!</p>
+<p>It&rsquo;s easy to see how do to subtraction, but can you do division? Certainly you can divide by (nonzero) real numbers: \(\frac{x+yi}{r} = \frac{x}{r}+\frac{y}{r}i\). And it&rsquo;s not hard to see that \(\frac{1}{x+yi}=\frac{x-yi}{x^2+y^2}\), so yes, you can do division by multiplying by the inverse.</p>
+<p>Mom interjected that there is a way to extend the complex plane to four dimensions to produce numbers called quaternions. A quaternion can be written as \(a+bi+cj+dk\) where \(a\), \(b\), \(c\), and \(d\) are real numbers, and the multiplication rules for \(i\), \(j\), and \(k\) are \(i^2=j^2=k^2=-1\), \(ij=k\), \(jk=i\), \(ki=j\), and multiplication is associative and distributive over addition, but is commutative only when the vector part of one factor is a real multiple of the vector part of the other! A simple example of lack of commutativity is \(ji = kii = ki^2 = k(-1) = -k = -ij\). Quaternions can be thought of as having a scalar (real) part and a 3-dimensional-vector part, with multiplication \(\langle r,\vec{v}\rangle\times\langle s,\vec{w}\rangle = \langle rs-\vec{v}\cdot\vec{w},s\vec{v}+r\vec{w}+\vec{v}\times\vec{w}\rangle\). This formula defines two kinds of 3d-vector multiplication: dot product (\(\cdot\)) and cross product (\(\times\)). It&rsquo;s easy to see that when the scalar parts of the factors are zero, the scalar part of the product is minus the dot product of the vectors, and the vector part is the cross product of the vectors.</p>
+</body>
+</html>
+
+<!--pictures: real line with points in plane
+       angle from horizontal
+       distance?
+    matrices for complex and quaternion
+-->
