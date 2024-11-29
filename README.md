@@ -5,6 +5,8 @@ NOTE: Do not depend on github's pdf viewer, as it uses nonstandard fonts. Instea
 
 area.html is an interactive animated elementary tutorial on geometric area, with characters from fib.html
 
+complex.html is an interactive elementary tutorial on complex numbers, also mentioning quaternions
+
 dft.html is an interactive animated demonstration of discrete Fourier transforms
 
 fib.html is an interactive animated elementary tutorial on Fibonacci/Lucas sequences
