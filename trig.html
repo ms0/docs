@@ -28,7 +28,7 @@ var cwwmarg = 2*cwps;
 
 var angle = Math.PI*5/17;
 var radius = 100;
-var pradius = 50;
+var pradius = 30;
 var cwidth = cwwmarg+(1+1/Math.cos(angle))*radius+2*cwr;
 var yoff = radius/Math.sin(angle);
 var cheight = yoff+radius+2*cwr;
@@ -43,6 +43,8 @@ var pwidth;
 var pheight;
 var mwidth;
 var mheight;
+
+var maxangle;    // for plots
 
 var cvt;    // for trig
 var ctt;
@@ -61,7 +63,9 @@ function init() {
   drawtrig(angle);
   cvp = document.getElementById('plots');
   pwidth = document.getElementById('body').clientWidth;
-  pheight = 2*(pradius+cwr);
+  pheight = 3*(pradius+cwr);
+  maxangle = Math.min(4*Math.PI*pradius,pwidth-2*pradius-cwwmarg)/pradius;
+  pwidth = cwwmarg+pradius*(maxangle+2);
   cvp.width = pwidth;
   cvp.height = pheight;
   ctp = cvp.getContext('2d');    
@@ -142,6 +146,12 @@ function drawplots(angle,offset) {
   timer = setInterval(drawsine,25,angle,offset);
 }
 
+function drawtanplot(angle,cflag) {
+  timer = clearInterval(timer);
+  ticker = 0;
+  timer = setInterval(drawtangent,25,angle,cflag);
+}
+
 function drawsine(maxangle,offset) {
   var angle = ticker*Math.PI/90;
   if (angle > maxangle) {
@@ -153,7 +163,7 @@ function drawsine(maxangle,offset) {
   ctp.fillStyle='red';
   ctp.setTransform(1,0,0,1,0,0);
   ctp.clearRect(0,0,pwidth,pheight);
-  ctp.translate(cwr+pradius,pradius+cwr);
+  ctp.translate(cwr+pradius,pheight/2);
   ctp.beginPath();
   ctp.arc(0,0,pradius,0,2*Math.PI);
   ctp.closePath();
@@ -171,8 +181,53 @@ function drawsine(maxangle,offset) {
   ctp.translate(cwwmarg+pradius,0);
   ctp.beginPath();
   ctp.moveTo(0,-pradius*Math.sin(offset));
+  var a;
   for (a=0; (a+=Math.PI/180)<=angle; ) {
     ctp.lineTo(pradius*a,-pradius*Math.sin(a+offset));
+  }
+  ctp.stroke();    
+  ++ticker;
+}
+
+function drawtangent(maxangle,cflag) {
+  var angle = ticker*Math.PI/90;
+  if (angle > maxangle) {
+    timer = clearInterval(timer);
+    return
+  }
+  ctp.lineWidth=.5;
+  ctp.strokeStyle='black';
+  ctp.fillStyle='red';
+  ctp.setTransform(1,0,0,1,0,0);
+  ctp.clearRect(0,0,pwidth,pheight);
+  ctp.translate(cwr+pradius,pheight/2);
+  ctp.beginPath();
+  ctp.arc(0,0,pradius,0,2*Math.PI);
+  ctp.closePath();
+  ctp.stroke();
+  var c = pradius*Math.cos(angle);
+  var s = -pradius*Math.sin(angle);
+  ctp.beginPath();
+  ctp.moveTo(c,0);
+  ctp.lineTo(c,s);
+  ctp.lineTo(0,s);
+  ctp.stroke();
+  ctp.beginPath();
+  ctp.arc(c,s,2,0,2*Math.PI);
+  ctp.closePath();
+  ctp.fill();
+  ctp.translate(cwwmarg+pradius,0);
+  ctp.beginPath();
+  var a,a0;
+  a0 = cflag ? Math.PI/6 : -Math.PI/3;
+  var f = cflag ? Math.cot : Math.tan;
+  for (; a0 < maxangle; a0 += Math.PI) {
+    var a1=Math.max(0,a0);
+    ctp.moveTo(a1,-pradius*f(a1));
+    for (a=a1; (a+=Math.PI/180)<=angle; ) {
+      if (cflag ? (f(a) > Math.sqrt(3)) : (f(a) < -Math.sqrt(3))) break;
+      ctp.lineTo(pradius*a,-pradius*f(a));
+    }
   }
   ctp.stroke();    
   ++ticker;
@@ -315,8 +370,8 @@ body {
 <p>Lu had been hearing about something called &ldquo;trigonometry.&rdquo; Mom explained, &ldquo;Just like geology is the study of Earth, and geometry is the study of measuring Earth, trigonometry is the study of measuring trigons.&rdquo; Fi asked, &ldquo;What&rsquo;s a trigon?&rdquo; Mom replied, &ldquo;It&rsquo;s a three-sided polygon of course, also known as a triangle.&rdquo;</p>
 <p>Mom continued, &ldquo;Actually, trigonometry defines six functions of an angle, based on a right triangle containing that angle. Each of those functions gives the ratio of the lengths of two of the sides of the right triangle. Since a triangle has three sides, there are three choices for the numerator, and then the remaining two sides give two choices for the denominator, so six possible ratios. The six functions are sine (opposite side / hypotenuse), cosine (adjacent side / hypotenuse), tangent (opposite side / adjacent side), cotangent (adjacent side / opposite side), secant (hypotenuse / adjacent side), cosecant (hypotenuse / opposite side). When written mathematically, they are sin, cos, tan, cot, sec, csc, respectively.&rdquo; Mom drew the picture below, labeling the radius of the circle as 1.</p>
 <canvas id='trig'></canvas>
-<p>Mom let Fi and Lu examine the picture for a while. &ldquo;One thing I haven&rsquo;t mentioned is how to measure an angle. Normal people measure angles in degrees. The idea is to divide a circle into a number of equal parts so that common angles have an integral number of degrees. \(2^3\times 3^2\times 5 = 360\) is a good choice since it is divisible by a lot of small numbers. With that choice, a straight angle is 180&deg;, a right angle is 90&deg;, an isosceles right triangle has two 45&deg; angles, an equilateral triangle has 60&deg angles, a regular hexagon has 120&deg angles, and a regular pentagon has 108&deg angles. But we mathematicians aren&rsquo;t normal people; we measure angles by the length of the arc of a circle with radius 1. So \(1^\circ = \frac{\pi}{180}\). With our system, a straight angle is \(\pi\), a right angle is \(\frac{\pi}{2}\), an isosceles right triangle has two \(\frac{\pi}{4}\) angles, an equilateral triangle has three \(\frac{\pi}{3}\) angles, a regular hexagon has six \(\frac{2\pi}{3}\) angles, and a regular pentagon has five \(\frac{3\pi}{5}\) angles. To a mathematician, this method of measuring angles is the most natural, as it means that \(\sin\theta\approx\theta\) for small \(\theta\). You might notice that once \(\theta\) increases beyond \(\frac{\pi}{2}\), the cosine function goes negative. In fact, \(\cos\theta = -\cos(\pi-\theta)\), while \(\sin\theta = \sin(\pi-\theta)\). In the picture, angles increase counterclockwise and decrease clockwise; \(\cos(-\theta) = \cos\theta\), while \(\sin(-\theta) = -\sin\theta\). Of course, all six functions have period \(2\pi\), since every time you go around the circumference of the circle (an angle of \(2\pi\)) you end up back where you started. (Actually, \(\tan\) and \(\cot\) have period \(\pi\).) For example, here&rsquo;s the <span onClick='drawplots(4*Math.PI,0)'>sine function</span> and here&rsquo;s the <span onClick='drawplots(4*Math.PI,Math.PI/2)'>cosine function</span>.</p>
-<canvas id='plots'></canvas>
+  <p>Mom let Fi and Lu examine the picture for a while. &ldquo;One thing I haven&rsquo;t mentioned is how to measure an angle. Normal people measure angles in degrees. The idea is to divide a circle into a number of equal parts so that common angles have an integral number of degrees. \(2^3\times 3^2\times 5 = 360\) is a good choice since it is divisible by a lot of small numbers. With that choice, a straight angle is 180&deg;, a right angle is 90&deg;, an isosceles right triangle has two 45&deg; angles, an equilateral triangle has 60&deg angles, a regular hexagon has 120&deg angles, and a regular pentagon has 108&deg angles. But we mathematicians aren&rsquo;t normal people; we measure angles by the length of the arc of a circle with radius 1. So \(1^\circ = \frac{\pi}{180}\). With our system, a straight angle is \(\pi\), a right angle is \(\frac{\pi}{2}\), an isosceles right triangle has two \(\frac{\pi}{4}\) angles, an equilateral triangle has three \(\frac{\pi}{3}\) angles, a regular hexagon has six \(\frac{2\pi}{3}\) angles, and a regular pentagon has five \(\frac{3\pi}{5}\) angles. To a mathematician, this method of measuring angles is the most natural, as it means that \(\sin\theta\approx\theta\) for small \(\theta\). You might notice that once \(\theta\) increases beyond \(\frac{\pi}{2}\), the cosine function goes negative. In fact, \(\cos\theta = -\cos(\pi-\theta)\), while \(\sin\theta = \sin(\pi-\theta)\). In the picture, angles increase counterclockwise and decrease clockwise; \(\cos(-\theta) = \cos\theta\), while \(\sin(-\theta) = -\sin\theta\). Of course, all six functions have period \(2\pi\), since every time you go around the circumference of the circle (an angle of \(2\pi\)) you end up back where you started. For example, here&rsquo;s the <span onClick='drawplots(maxangle,0)'>sine function</span> and here&rsquo;s the <span onClick='drawplots(maxangle,Math.PI/2)'>cosine function</span>. (Actually, <span onClick='drawtanplot(maxangle,0)'>tangent</span> and <span OnClick='drawtanplot(maxangle,1)'>cotangent</span> have period \(\pi\).)</p>
+<canvas id='plots' onClick='timer=clearInterval(timer)'></canvas>
 <p>&ldquo;There are many relationships between these six functions. Just from the definitions of the functions as ratios, it&rsquo;s quite clear that \(\tan\theta=\frac{\sin\theta}{\cos\theta}\), \(\sec\theta=\frac{1}{\cos\theta}\), \(\csc\theta=\frac{1}{\sin\theta}\), and \(\cot\theta=\frac{1}{\tan\theta}\). And from the observation that if \(\theta\) is one of the acute angles in a right triangle, the other acute angle is \(\frac{\pi}{2}-\theta\); we see that \(\cos \theta = \sin(\frac{\pi}{2}-\theta)\), \(\cot \theta = \tan(\frac{\pi}{2}-\theta)\), and \(\csc \theta = \sec(\frac{\pi}{2}-\theta)\). Finally, looking at the right triangles in the picture, the Pythagorean theorem shows that \(\sin^2\theta + \cos^2\theta = 1\), \(1+\tan^2\theta = \sec^2\theta\), \(1+\cot^2\theta = \csc^2\theta\), and \(\sec^2\theta+\csc^2\theta=(\tan\theta+\cot\theta)^2\).&rdquo;</p>
 <p>Lu wondered, &ldquo;What has any of this to do with measuring triangles?&rdquo; Mom replied, &ldquo;Remember how to compute the area of a triangle by dropping a perpendicular from a vertex to a side? You need to know how long that perpendicular is. Well, you can compute it using the sine function.&rdquo;</p>
 <canvas id='sins'></canvas>
