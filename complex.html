@@ -50,10 +50,12 @@ function init() {
 
 function glue(event) {
   if (!glued) {
+    event.target.style.cursor='none';
     showpoint(event);
     glued = 1;
   } else {
     event.target.style.cursor='crosshair';
+    glued = 0;
   }
 }
 
