@@ -65,18 +65,21 @@ function init() {
 
 function mtableinit() {
   var t = document.getElementById('multiplication');
-  var s = '';
+  var s = '<tr><th>&times;</th>';
   var r,c;
+  for (c=0; c<10; c++) {
+    s += '<th>'+c+'</th>';
+  }
   for (r=0; r<10; r++) {
-    s += '<tr>'    
+    s += '<tr><th>'+r+'</th>';
     for (c=0; c<10; c++) {
       s += '<td class="r'+r+' c'+c+'">'+r*c+'</td>';
     }
-    s += '</tr>'
+    s += '</tr>';
   }
   t.innerHTML = s;
-  for (r=0; r<t.rows.length; r++) {
-    for (c=0; c<t.rows[r].cells.length; c++) {
+  for (r=1; r<t.rows.length; r++) {
+    for (c=1; c<t.rows[r].cells.length; c++) {
       t.rows[r].cells[c].addEventListener('mouseover',cellselect);
     }
   }
@@ -89,15 +92,15 @@ function cellselect(e) {
   for (i in classes) {
     switch (classes[i][0]) {
     case 'r':
-      r = +classes[i].slice(1);
+      r = +classes[i].slice(1)+1;
       break;
     case 'c':
-      c = +classes[i].slice(1);
+      c = +classes[i].slice(1)+1;
       break;
     }
   }
-  for (i=0; i<t.rows.length; i++) {
-    for (j=0; j<t.rows[i].cells.length; j++) {
+  for (i=1; i<t.rows.length; i++) {
+    for (j=1; j<t.rows[i].cells.length; j++) {
       t.rows[i].cells[j].style.backgroundColor =
 	(i<r && j<c) ? 'lightgray': (i==r && j==c) ? 'yellow':'white';
     }
@@ -370,14 +373,9 @@ function showpopup(o,s) {
   width:20px;
 }
 
-td {
+td,th {
   width:20px;
   height:20px;	
-}
-
-td.c1,td.r1 {
-  font-weight:bold;
-  color:red;
 }
 span {
   text-decoration:underline;
