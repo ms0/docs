@@ -67,8 +67,11 @@ function drawsine() {
 }
 
 var timer;
-var delta;
-var x;
+var delta;    // delta x for approximating tangent
+var x;        // abscissa of point on curve
+var E0 = 1/2; // energy of ball at top of curve
+var g = 64/cinheight;    // acceleration of gravity
+var r = 5;    // radius of ball
 
 function showtan(event) {
   if (event) {
@@ -103,6 +106,35 @@ function showtan(event) {
   ctp.fill();
   if (--delta < 1) {
     delta = 0;
+  }
+}
+
+function ski() {
+  timer = clearInterval(timer);
+  drawsine();
+  x = -cwidth/2;
+  timer = setInterval(moveball,25);
+}
+
+function drawball(x,y) {
+  ctp.beginPath();
+  ctp.arc(x,y,r,0,2*Math.PI);
+  ctp.closePath();
+  ctp.fill();
+}
+
+function moveball() {
+  var t = -Math.cos(x*2/cinheight);    // slope
+  var h = Math.sqrt(1+t**2);
+  var u = 1/h;
+  var v = t/h;
+  var y = -cinheight/2*Math.sin(x*2/cinheight)-u*r;
+  drawsine();
+  drawball(x+v*r,y);
+  var E = E0 + g*(y+cinheight/2+r);
+  x += Math.sqrt(E)*u/2;
+  if (x > cwidth/2+2*r) {
+    timer=clearInterval(timer);
   }
 }
 
@@ -154,7 +186,7 @@ body {
 </head>
 <body id='body' onload="init()" onresize="init()">
 <h1>Fi and Lu conquer calculus</h1>
-<p>Fi liked the pretty curves that she saw when tackling trigonometry. She imagined skiing on those curves, speeding up on the downslopes and slowing down on the upslopes. Lu realized that the steepness of the slopes could be measured by looking at nearby points. Mom said that this was called <i>differentiation</i>. &ldquo;You can draw a tangent to the curve at a point&mdash;a straight line that just touches the curve at that point. The slope of that tangent is just how much it goes up for each unit it goes forward. You can approximate the tangent by taking two points on the curve very close to each other and drawing a line between them. As the two points get closer together, they provide a better approximation to the tangent. (Click the plot below.)</p>
+<p>Fi liked the pretty curves that she saw when tackling trigonometry. She imagined <span onclick='ski()'>skiing</span> on those curves, speeding up on the downslopes and slowing down on the upslopes. Lu realized that the steepness of the slopes could be measured by looking at nearby points. Mom said that this was called <i>differentiation</i>. &ldquo;You can draw a tangent to the curve at a point&mdash;a straight line that just touches the curve at that point. The slope of that tangent is just how much it goes up for each unit it goes forward. You can approximate the tangent by taking two points on the curve very close to each other and drawing a line between them. As the two points get closer together, they provide a better approximation to the tangent. (Click the plot below.)</p>
 <canvas id='plot'></canvas>    
 <p>&ldquo;For a function \(f(x)\), we can define the derivative of \(f(x)\) with respect to \(x\), the function that gives the slope of the tangent to \(f(x)\) at each point \(x\), as
 \[\frac{df(x)}{dx} = \lim_{\delta\rightarrow 0} \frac{f(x+\delta)-f(x)}{\delta}\]
@@ -209,7 +241,11 @@ but it&rsquo;s fairly clear that this can&rsquo;t work for \(|x|>1\), since the 
 <p>The natural base for logarithms is \(e\), sometimes called Euler&rsquo;s number. Using \(\log\) without specifying the base can sometimes mean the base is ten (&ldquo;common logarithm&rdquo;) and sometimes mean the base is \(e\) (&ldquo;natural logarithm&rdquo;), and occasionally even that the base is two. So, as is quite common, we use \(\ln\) to mean \(\log_e\).</p>
 </body>
 </html>
-<!--talk about functions, monomials, polynomials, binomial theorem -->
-<!-- pictures: simple plots; approximating tangent -->
+<!--sliding down sine: radius r, and initial kinetic energy E_0
+    speed given by v = sqrt(2E)/m
+    direction given by slope at contact point: v/|v|=(i+f'(x)j)/sqrt(1+f'(x)^2)
+    E given by E_0 + g (f(x) + rj.(k x v/|v|)
+    increment x assuming velocity vector remains unchanged over time increment
+-->
 <!--interaction: type in function, see plot -->
 <!-- how hard is it to parse subset of Tex and turn into a function? math.js -->
