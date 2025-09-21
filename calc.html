@@ -182,9 +182,24 @@ canvas {
 body {
   max-width:820px;
 }
+p.top {
+  position:absolute;
+  left:0;top:0;
+  text-align:left;
+  font-size:.75em;
+  margin:0;
+}
 </style>
 </head>
 <body id='body' onload="init()" onresize="init()">
+<p class='top'>
+  <a href='fib.html'>Fi &amp; Lu</a>&nbsp;
+  <a href='area.html'>Area</a></a>&nbsp;
+  <a href='trig.html'>Trigonometry</a>&nbsp;
+  <a href='func.html'>Functions</a>&nbsp;
+  <a href='complex.html'>ComplexNumbers</a>&nbsp;
+  <a href='calc.html'>Calculus</a>
+</p>
 <h1>Fi and Lu conquer calculus</h1>
 <p>Fi liked the pretty curves that she saw when tackling trigonometry. She imagined <span onclick='ski()'>skiing</span> on those curves, speeding up on the downslopes and slowing down on the upslopes. Lu realized that the steepness of the slopes could be measured by looking at nearby points. Mom said that this was called <i>differentiation</i>. &ldquo;You can draw a tangent to the curve at a point&mdash;a straight line that just touches the curve at that point. The slope of that tangent is just how much it goes up for each unit it goes forward. You can approximate the tangent by taking two points on the curve very close to each other and drawing a line between them. As the two points get closer together, they provide a better approximation to the tangent. (Click the plot below.)</p>
 <canvas id='plot'></canvas>    
@@ -204,7 +219,7 @@ body {
 &ldquo;A question that comes to mind is what is the derivative of \(\ln x\)? Well
 \[ 1 = \frac{dx}{dx} = \frac{d(e^{\ln x})}{dx} = \frac{d(e^{\ln x})}{d(\ln x)}\frac{d(\ln x)}{dx} = e^{\ln x}\frac{d(\ln x)}{dx} = x \frac{d(\ln x)}{dx}\] so
 \[\frac{d(\ln x)}{dx} = \frac{1}{x}\]
-&ldquo;As another example, we can use our knowledge of trigonometry to compute the derivative of \(\sin x\): \begin{align*}\frac{d(\sin x)}{dx} &=  \lim_{\delta\rightarrow 0} \frac{\sin(x+\delta)-\sin x}{\delta} \\ &= \lim_{\delta\rightarrow 0} \frac{\sin x \cos\delta + \cos x \sin\delta-\sin x}{\delta} \\ &= \lim_{\delta\rightarrow 0} \frac{\cos x \sin\delta-(1-\cos\delta)\sin x}{\delta}\end{align*}
+&ldquo;As another example, we can use our knowledge of trigonometry to compute the derivative of \(\sin x\): \begin{align*}\frac{d(\sin x)}{dx} &= \lim_{\delta\rightarrow 0} \frac{\sin(x+\delta)-\sin x}{\delta} \\ &= \lim_{\delta\rightarrow 0} \frac{\sin x \cos\delta + \cos x \sin\delta-\sin x}{\delta} \\ &= \lim_{\delta\rightarrow 0} \frac{\cos x \sin\delta-(1-\cos\delta)\sin x}{\delta}\end{align*}
 &ldquo;We can notice that \(1-\cos\delta = (1-cos^2\delta)/(1+\cos\delta) = \sin^2\delta/(1+\cos\delta)\). We know that \(\sin 0 = 0\) and \(\cos 0 = 1\), while \(\lim_{\delta\rightarrow 0} \frac{\sin\delta}{\delta} = 1\), so we see that \begin{align*}\frac{d(\sin x)}{dx} &= \lim_{\delta\rightarrow 0} \frac{\cos x \sin\delta-(1-\cos\delta)\sin x}{\delta} \\ &= \lim_{\delta\rightarrow 0} \frac{\cos x \sin\delta-\frac{\sin^2\delta}{1+\cos\delta}\sin x}{\delta} \\ &= \left(\cos x - \frac{\sin 0}{1+\cos 0} \sin x\right) \lim_{\delta\rightarrow 0} \frac{\sin\delta}{\delta} \\ &= \cos x\end{align*}
 &ldquo;We can then easily compute the derivative of \(\cos x\):
 \[\frac{d(\cos x)}{dx} = \frac{d(\sin(\frac{\pi}{2}-x))}{dx} = \frac{d(\sin(\frac{\pi}{2}-x))}{d(\frac{\pi}{2}-x)}\frac{d(\frac{\pi}{2}-x)}{dx} = \cos(\frac{\pi}{2}-x)(-1) = -\sin x\]
