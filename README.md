@@ -3,8 +3,10 @@ Documents, Slideshows, etc.
 Various formats: pdf, html, ...
 NOTE: Do not depend on github's pdf viewer, as it uses nonstandard fonts. Instead, download pdfs and use Adobe-compatible viewer.
 
-The files fib.html, area.html, trig.html, func.html, complex.html, and calc.html form a series of interactive elementary math tutorials,
-with characters introduced in the first tutorial. They are intended to be viewed in the above order. 
+The files fib.html, area.html, algebra.html, trig.html, func.html, complex.html, and calc.html form a series of interactive elementary math tutorials,
+with characters introduced in the first tutorial. They are intended to be viewed in the above order.
+
+algebra.html is an elementary tutorial on elementary algebra, intended to follow area.html
 
 area.html is an interactive animated elementary tutorial on geometric area, with characters from fib.html
 
