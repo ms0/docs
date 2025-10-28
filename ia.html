@@ -88,7 +88,10 @@ function dropHandler(event) {
       plot();
     }
   } else {
-    document.getElementById('expression').innerHTML = m;
+    document.getElementById('expression').innerHTML = m
+      .replace(/-/g,document.getElementById('minus').innerHTML)
+      .replace(/\^{/g,document.getElementById('powup').innerHTML)
+      .replace(/}/g,document.getElementById('powdn').innerHTML);
     document.getElementById('debug').innerHTML = expr2js(m);
     if (t.scrollWidth > t.clientWidth) t.scrollLeft = t.scrollWidth-t.clientWidth;
   }
