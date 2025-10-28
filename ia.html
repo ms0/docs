@@ -24,7 +24,8 @@ function init() {
   var b;
   b = document.getElementById('exprbuttons').children;
   for (i=0; i < b.length; i++) {
-    if (b[i].id == 'bs') {
+    if (b[i].id == 'keyboard') {
+    } else if (b[i].id == 'bs') {
       b[i].addEventListener('click',bs);
     } else {
       b[i].addEventListener('click',bp);
@@ -60,6 +61,7 @@ function init() {
     b[i].step=.125;
     b[i].addEventListener('change',updateLimits);
   }
+  MathJax.startup.output.options.linebreaks.inline = false;
 }
 
 function dragStartHandler(event) {
@@ -88,6 +90,7 @@ function dropHandler(event) {
   } else {
     document.getElementById('expression').innerHTML = m;
     document.getElementById('debug').innerHTML = expr2js(m);
+    if (t.scrollWidth > t.clientWidth) t.scrollLeft = t.scrollWidth-t.clientWidth;
   }
 }
 
@@ -228,7 +231,9 @@ function parse() {    // parse expression and return as latex string
   document.getElementById('debug').innerHTML = expr2js(m.slice(2,-2));
   MathJax.typesetClear([document.getElementById('mathbox')]);
   document.getElementById('math').innerHTML = m;
-  MathJax.typesetPromise(['#math']);
+  MathJax.typeset(['#math']);
+  o = document.getElementById('mathbox');
+  if (o.scrollWidth > o.clientWidth) o.scrollLeft = o.scrollWidth-o.clientWidth;
 }
 
 function setkeys(state) {
@@ -560,6 +565,16 @@ function addplot(exprs) {    // plot expressions with current limits
   }
 }
 
+function showpopup(o,s) {
+  var b = document.body.getClientRects()[0];
+  var r = o.parentNode.getClientRects()[0];
+  o = document.getElementById(s);
+  o.style.display='block';
+  var q = o.getClientRects()[0];
+  o.style.position = 'absolute';
+  o.style.left = (r.width-q.width)/2+'px';
+  o.style.top = (r.top+r.bottom-q.height)/2-b.top+'px';
+}
 </script>
 <style>
 #debug {
@@ -579,9 +594,21 @@ button {
   text-align:center;
   margin:0;
 }
+.popup {
+  background-color:white;
+  display:none;
+  z-index:1;
+  position:absolute;
+  top:0;
+  left:0;
+  padding:6px;
+  margin:6px;
+  border:1px solid black;
+  max-width:inherit;
+}
 #exprboxes {
   display:grid;
-  grid-template-columns: 20px 380px 60px;
+  grid-template-columns: 20px 440px 60px;
   row-gap:2px;
   align-items:center;
   margin-top:2px;
@@ -595,12 +622,13 @@ button {
   display:flex;
   justify-content:center;
   align-items:center;
-  width:380px;
-  height:30px;
+  width:440px;
+  height:32px;
   border:1px solid black;
   padding:0;
   margin:0;
   text-align:center;
+  overflow-x:auto;
 }
 .up {
   background-color:white;  
@@ -610,6 +638,12 @@ button {
 }
 #mathdiv {
   float:left;
+}
+#keyboard {
+  display:inline;
+  margin-left:20px;
+  text-decoration:underline;
+  cursor:context-menu;
 }
 #plot {
   float:left;
@@ -711,6 +745,7 @@ input[type=number] {
 <button class='var'>x</button>
 <button class='var'>y</button>
 <button class='var'>z</button>
+<p id='keyboard' onclick="showpopup(this,'help')">Use keyboard</p>
 </div>
 <div id='exprboxes'>
 <p class='varlabel'>p</p><div id='mathboxp' class='exprbox'></div><button class='up'>PLOT</button>
@@ -743,7 +778,18 @@ input[type=number] {
   <input id='rgt' class='lim' type='number'></input>
   </div>
 </div>
-
+<div id='help' class='popup' onclick='this.style.display="none";document.getElementById("exprbuttons").focus();'>
+<h2>Using the keyboard</h2>
+<ul>
+<li>Use asterisk ( * ) for multiply ( &times; )</li>
+<li>Use slash ( / ) for divide ( &divide; )</li>
+<li>Use hyphen ( - ) for minus ( &minus; )</li>
+<li>Use caret ( ^ ) to start exponent ( &uparrow; )</li>
+<li>Use backslash ( \\ ) to end exponent ( &downarrow; )</li>
+</ul>
+<p>Grayed-out selections are ignored.</p>
+<p>Click to hide this popup.</p>	       
+</div>
 </body>
 </html>
 <!--We enter mathematical expressions by clicking on components
