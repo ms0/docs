@@ -6,9 +6,17 @@
   src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js">
 </script>
 <script>
+const pi = Math.PI;
+const tau = 2*pi;
+const e = Math.E;
+
 var expression;    // input string for math expression
 var parsetable;    // dictionary keyname->buttonelement
 var exprbuttons;   // keys to enter components of math expression
+var vv = {};       // variable -> expression
+var plottedvars = [];    // last array of variables that were plotted
+var vvars = {};    // variable -> list of variables found in vv[variable]
+var tvars = {};    // transitive closure of vvars
 
 var cvs;
 var ctx;
@@ -19,7 +27,7 @@ function init() {
   expression.innerHTML = '';
   parsetable = {};
   exprbuttons = [];
-  document.getElementById('exprbuttons').addEventListener('keydown',algkey);
+  document.body.addEventListener('keydown',algkey);
   var i;
   var b;
   b = document.getElementById('exprbuttons').children;
@@ -84,9 +92,8 @@ function dropHandler(event) {
   t.innerHTML = x;
   MathJax.typeset([t]);
   if (n) {
-    if (t.nextElementSibling.classList.contains('down')) {
-      plot();
-    }
+    vv[n] = expr2js(m);
+    plot();
   } else {
     document.getElementById('expression').innerHTML = m
       .replace(/-/g,document.getElementById('minus').innerHTML)
@@ -111,6 +118,7 @@ function toggle(event) {
 }
 
 function algkey(event) {    // key down
+  if (event.target.tagName == 'INPUT') return;
   event.preventDefault();
   const k = event.key;
   var o;
@@ -118,7 +126,7 @@ function algkey(event) {    // key down
     expression.innerHTML = expression.innerHTML.slice(0,-1);
   } else if ('0' <= k && k <= '9') {
     expression.innerHTML += k;
-  } else if ('p' <= k && k <= 'z') {
+  } else if ('p' <= k && k <= 'z' || k == 'e') {
     o = document.getElementsByClassName('var')[0];
     if (!o.disabled) expression.innerHTML += k;
   } else if (k == '+') {
@@ -144,10 +152,13 @@ function algkey(event) {    // key down
     if (!o.disabled) expression.innerHTML += o.innerHTML;
   } else if (k == '/') {
     o = document.getElementById('divide');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;    
+    if (!o.disabled) expression.innerHTML += o.innerHTML;
+  } else if (k == '%') {
+    o = document.getElementById('mod');
+    if (!o.disabled) expression.innerHTML += o.innerHTML;
   } else if (k == '\\') {
     o = document.getElementById('powdn');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;    
+    if (!o.disabled) expression.innerHTML += o.innerHTML;
   } else if (k == '!') {
     o = document.getElementById('bang');
     if (!o.disabled) expression.innerHTML += k;
@@ -163,8 +174,9 @@ function bs(event) {    // backspace pressed
 }
 
 function bp(event) {    // button pressed
-  o = event.target;
-  expression.innerHTML += o.innerHTML;  
+  const o = event.target;
+  var c = o.innerHTML;
+  expression.innerHTML += c;
   parse();
 }
 
@@ -222,6 +234,7 @@ function parse() {    // parse expression and return as latex string
     case 'minus' :
       c = '-';
     default :
+      if (c == '%') c = '\\bmod ';
       m += c;
       if (c == '.') {
 	parstate = parstate == 1 ? 4 : 5;
@@ -314,6 +327,7 @@ function expr2js(expr) { // convert math expression to javascript expression
      Subexpression conversions are trigger by ')', '}', or any operator.
   */
   const p=0,q=0,r=0,s=0,t=0,u=0,v=0,w=0,x=0,y=0,z=0;    // for eval test at end
+  const theta=0;
   var js = '';          // output javascript expression
   var signcount = 0;    // number of minuses + twice number of pluses
   var digits = '';      // string of digits
@@ -324,6 +338,27 @@ function expr2js(expr) { // convert math expression to javascript expression
   for (i=0; i < expr.length; i++) {
     c = expr[i];
     switch (c) {
+    case '\\':
+      c = expr.slice(i+1).match(/^\w*\s*/)[0];
+      if (c.slice(0,4) != 'bmod') {
+	throw new SyntaxError('Unknown token at '+i);
+      }
+      i += c.length;
+      if (digits.length) {
+	vars.push(digits);
+      }
+      if (!vars.length) {
+	throw new SyntaxError('No dividend at '+i);
+      }
+      js += (signcount ? (signcount&1 ? '-' : '+') : '') +
+	((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
+	 '(' + vars.join('*') + ')' : vars[0]) + '%';
+      signcount = 0;
+      digits = '';
+      vars = [];
+      unary = true;
+      break;
+
     case '{' :    // follows ^
       if (expr[i-1] != '^') {
 	throw new SyntaxError('{ without preceding ^ at position '+i);
@@ -465,6 +500,13 @@ function expr2js(expr) { // convert math expression to javascript expression
       vars.push('factorial('+digits+')');
       digits = '';
       break;
+    case '\u03b8':
+      c = 'theta';
+    case '\u03c0':
+      if (c.length == 1) c = 'pi';
+    case '\u03c4':
+      if (c.length == 1) c = 'tau';
+    case 'e':
     case 'p': case 'q': case 'r': case 's': case 't':
     case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
       if (digits.length) {
@@ -494,14 +536,13 @@ function expr2js(expr) { // convert math expression to javascript expression
   return js;
 }
 
-var plottedExprs = [];    // last array of expressions that were plotted
-
 function variables(expr) {    // return frequency of variables in expression
   var d = {};
   var i,c;
-  for (i in expr) {
-    c = expr[i];
-    if ('p'<= c && c <= 'z') {
+  const m = expr.match(/\w+/g);
+  for (i in m) {
+    c = m[i];
+    if (c.length == 1 && 'p'<=c && c<='z' || c=='theta') {
       if (c in d) {
 	d[c] += 1;
       } else {
@@ -516,35 +557,67 @@ function length(o) {    // return length of object
   return Object.keys(o).length;
 }
 
+function fulleval(vin,obj) {    // evaluate variable v using dictionary o
+  if (tvars[vin][vin] != undefined) {
+    throw new Error('self-referential variable '+vin);
+  }
+  var win;
+  for (win in vvars[vin]) {
+    if (obj[win] == undefined) fulleval(win,obj);
+  }
+  for (win in obj) {
+    eval('var '+win+'=obj[win];');
+  }
+  return (obj[vin]=eval(vv[vin]));
+}
+
 function updateLimits(event) {
-  addplot(plottedExprs);  
+  addplot(plottedvars);  
 }
 
 function plot() {    // plot expressions
   // automatically compute limits ?
   const b = document.getElementById('exprboxes').getElementsByClassName('down');
   var i;
-  var exprs = [];
+  var vars = [];
   for (i=0; i<b.length; i++) {
-    exprs.push(
-      expr2js(MathJax.startup.document.getMathItemsWithin(
-	[b[i].previousElementSibling])[0].math));
+    vars.push(b[i].previousElementSibling.id.slice(-1));
   }
-  addplot(exprs);
+  addplot(vars);
 }
 
 const side = 513;
 
-function addplot(exprs) {    // plot expressions with current limits
-  plottedExprs = exprs.slice();
+function addplot(vars) {    // plot expressions with current limits
+  plottedvars = vars.slice();
+  var changed = false;
   const x0 = document.getElementById('lft').valueAsNumber;
   const x1 = document.getElementById('rgt').valueAsNumber;  
   const y0 = document.getElementById('bot').valueAsNumber;
   const y1 = document.getElementById('top').valueAsNumber;  
-  var n,i,j;
+  var n,i,j,k;
+  var v;
   var x;
   var y;
+  var r,theta;
+  var l;
+  var changed = true;
   if (!(x0<x1 && y0<y1)) throw new Error('Low Limits Must Be Less Than High Limits');
+  vvars = {};
+  for (v in vv) {
+    vvars[v] = variables(vv[v]);
+    tvars[v] = Object.assign({},vvars[v]);
+  }
+  while (changed) {
+    changed = false;
+    for (v in vvars) {
+      l = length(tvars[v]);
+      for (w in tvars[v]) {
+	Object.assign(tvars[v],tvars[w]);
+      }
+      changed |= l != length(tvars[v]);
+    }
+  }
   ctx.clearRect(0,0,side,side);
   ctx.strokeStyle='gray';
   if (x0 < 0 && 0 < x1) {
@@ -560,21 +633,31 @@ function addplot(exprs) {    // plot expressions with current limits
     ctx.stroke();
   }
   ctx.strokeStyle='black';
-  for (n in exprs) {
+  for (n in vars) {
     ctx.beginPath();
-    if (variables(exprs[n])['x']) {
+    if (tvars[vars[n]]['x']) {
       for (i = 0; i < side; i++) {
 	x = x0 + i*(x1-x0)/(side-1);
-	y = eval(exprs[n]);
+	y = fulleval(vars[n],{'x':x});
 	j = (side-1)*(y1-y)/(y1-y0);
 	i ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
       }
-    } else if (variables(exprs[n])['y']) {
+    } else if (tvars[vars[n]]['y']) {
       for (j = 0; j < side; j++) {
 	y = y1 - j*(y1-y0)/(side-1);
-	x = eval(exprs[n]);
+	x = fulleval(vars[n],{'y':y});
 	i = (side-1)*(x-x0)/(x1-x0);
 	j ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
+      }
+    } else if (tvars[vars[n]]['theta']) {
+      for (k = 0; k < 361; k++) {
+	theta = pi*k/180;
+	r = fulleval(vars[n],{'theta':theta});
+	x = r*Math.cos(theta);
+	y = r*Math.sin(theta);
+	i = (side-1)*(x-x0)/(x1-x0);
+	j = (side-1)*(y1-y)/(y1-y0);
+	k ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
       }
     }
     ctx.stroke();
@@ -601,6 +684,19 @@ function factorial(n) {
   while (n) x*= n--;
   return x;
 }		      
+
+/* thoughts:
+   Is there a way to do log?
+   Graph of variable dependencies (must be tree ...
+   ...  unless we want to solve simultaneous equations)
+*/
+/* idea for new scheme:
+   boxes for constants, variables, numbers, operations; arrows for interaction
+   ... converted to math expressions
+   always one output, but possible multiple inputs, e.g. atan2, b^x, log_b x
+   ... the last two defaulting b to e
+   ... Sum and Product ?
+*/
 </script>
 <style>
 #debug {
@@ -619,8 +715,12 @@ button {
   white-space:nowrap;
   width:512px;
 }
-.var {font-style:italic;}
+.var {
+  font-family:serif;
+  font-style:italic;
+}
 .varlabel {
+  font-family:serif;
   font-style:italic;
   text-align:center;
   margin:0;
@@ -749,12 +849,16 @@ input[type=number] {
 <button id='minus' class='op'>&minus;</button>
 <button id='times' class='op binary'>&times;</button>
 <button id='divide' class='op binary'>&divide;</button>
+<button id='mod' class='op binary'>%</button>
 <button id='powup' class='op'>&uparrow;</button>
 <button id='powdn' class='op closer'>&downarrow;</button>
 <button id='oparen' class='op'>(</button>
 <button id='cparen' class='op closer'>)</button>
 <button id='bs'>Backspace</button>
 <br>
+<button class='var'>e</button>
+<button class='var'>&pi;</button>
+<button class='var'>&tau;</button>
 <button class='digit'>0</button>
 <button class='digit'>1</button>
 <button class='digit'>2</button>
@@ -768,6 +872,7 @@ input[type=number] {
 <button id='decpt'>.</button>
 <button id='bang'>!</button>
 </br>
+<button class='var'>&theta;</button>
 <button class='var'>p</button>
 <button class='var'>q</button>
 <button class='var'>r</button>
@@ -820,6 +925,7 @@ input[type=number] {
 <li>Use hyphen ( - ) for minus ( &minus; )</li>
 <li>Use caret ( ^ ) to start exponent ( &uparrow; )</li>
 <li>Use backslash ( \\ ) to end exponent ( &downarrow; )</li>
+<li>Use percent ( % ) for modulo ( mod )</li>
 </ul>
 <p>Grayed-out selections are ignored.</p>
 <p>Click to hide this popup.</p>	       
