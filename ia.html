@@ -98,7 +98,8 @@ function dropHandler(event) {
     document.getElementById('expression').innerHTML = m
       .replace(/-/g,document.getElementById('minus').innerHTML)
       .replace(/\^{/g,document.getElementById('powup').innerHTML)
-      .replace(/}/g,document.getElementById('powdn').innerHTML);
+      .replace(/}/g,document.getElementById('powdn').innerHTML)
+      .replace(/\\bmod /g,'%');
     document.getElementById('debug').innerHTML = expr2js(m);
     if (t.scrollWidth > t.clientWidth) t.scrollLeft = t.scrollWidth-t.clientWidth;
   }
@@ -358,10 +359,9 @@ function expr2js(expr) { // convert math expression to javascript expression
       vars = [];
       unary = true;
       break;
-
-    case '{' :    // follows ^
-      if (expr[i-1] != '^') {
-	throw new SyntaxError('{ without preceding ^ at position '+i);
+    case '^' :
+      if ((c=expr[++i]) != '{') {
+	throw new SyntaxError('Improper exponent at '+i);
       }
       if (digits.length) {
 	vars.push(digits);
@@ -477,11 +477,6 @@ function expr2js(expr) { // convert math expression to javascript expression
       digits = '';
       vars = [];
       unary = true;
-      break;
-    case '^' :
-      if (expr[i+1] != '{') {
-	throw new SyntaxError('Improper exponent at '+i);
-      }
       break;
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
