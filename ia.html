@@ -843,7 +843,7 @@ input[type=number] {
 <body onload='init()'>
 <div id='mathdiv'>
 <div id='mathbox' class='exprbox'><p id='math' draggable='true'></p></div>
-<div id='exprdiv'><p id='expression'></p><br></div>
+<div id='exprdiv'><p id='expression' contenteditable='plaintext-only'></p><br></div>
 <div id='exprbuttons' tabindex='0'>
 <button id='plus' class='op'>+</button>
 <button id='minus' class='op'>&minus;</button>
@@ -917,7 +917,7 @@ input[type=number] {
   <input id='rgt' class='lim' type='number'></input>
   </div>
 </div>
-<div id='help' class='popup' onclick='this.style.display="none";document.getElementById("exprbuttons").focus();'>
+<div id='help' class='popup' onclick='this.style.display="none";document.getElementById("expression").focus();'>
 <h2>Using the keyboard</h2>
 <ul>
 <li>Use asterisk ( * ) for multiply ( &times; )</li>
