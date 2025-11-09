@@ -325,25 +325,178 @@ function setkeys(state) {
   }
 }
 
+function rational(a) {    // convert x to rational
+  if (!Number.isFinite(a)) return [a==a && Math.sign(a) || 0,0];
+  if (Number.isInteger(a)) return [a,1];
+  var b = Math.abs(a);
+  var x = b;
+  var m0=0, m1=1, n0=1, n1=0;
+  var t0,t1;
+  var i, c, ix, fx;
+  for (i = 64; i--;) {
+    ix = Math.floor(x);
+    fx = x%1;
+    t0 = n0;
+    t1 = n1;
+    n0 = m0 + ix*n0;
+    n1 = m1 + ix*n1;
+    m0 = t0;
+    m1 = t1;
+    if (fx == 0 || n0/n1 == b) break;
+    x = 1/fx;
+    if (!Number.isFinite(x)) break;
+  }
+  return [Math.sign(a)*n0,n1];
+}
+
+function xgcd(a,b) {
+  var c=1, d=0, e=0, f=1;
+  var g,h;
+  var q,r;
+  while (b) {
+    q = Math.floor(a/b);
+    r = a - q*b;
+    g = e;
+    h = f;
+    e = c-q*e;
+    f = d-q*f;
+    c = g;
+    d = h;
+    a = b;
+    b = r;
+  }
+  return a ? a < 0 ? [-a,-c,-d] : [a,c,d] : [0,0,0];
+}
+
+function factor(n,b) {    // factor n into primes up to (but not including) b
+  if (!Number.isInteger || n < 1) {
+    throw new TypeError('Only positive integers can be factored');
+  }
+  var f = {};
+  if (n == 1) return f;
+  if (b <= 2) return {n:1};
+  var p = 2;
+  while (!(n&1)) {
+    f[p] = (f[p] || 0) + 1;
+    n >>= 1;
+  }
+  if (n == 1) return f;
+  for (p = 1; (p+=2) < b; ) {
+    while (!(n%p)) {
+      f[p] = (f[p] || 0) + 1;
+      n /= p;
+    }
+    if (n == 1) return f;
+  }
+  f[n] = 1;
+  return f;
+}
+
+function mod(a,b) {    // mathematical mod function
+  // Note: javascript % is in (-|b|,|b|)
+  b = Math.abs(b);
+  var f,r,s;
+  var p;    // prime factors
+  if (Number.isInteger(b)) {   // integer modulus: value in [0,|b|).
+    if (!Number.isInteger(a) && b != 1) {
+      r = rational(a);
+      f = factor(r[1],b);
+      var x=r[0];
+      for (p in f) {
+	if (p >= b) {
+	  x = 0;
+	  break;
+	}
+	s = xgcd(p,b);
+	if (s[0] != 1) {
+	  x = 0;
+	  break;
+	}
+	x *= s[1]**f[p];
+      }
+      if (x) return mod(x,b);
+    }
+    r = a%b;
+    return r < 0 ? r + b : Math.abs(r);    // don't want -0
+  } else {                     // noninteger modulus: value in (-b/2,b/2]
+    r = a%b;
+    return r > b/2 ? r-b : r <= -b/2 ? r+b : r;
+  }
+}
+
 function expr2js(expr) { // convert math expression to javascript expression
   /* Until converted into a string, signs, digits, and variables are accumulated
-     Signs are counted (1 for -, 2 for +).
+     Unary signs are combined (0 for +, 1 for -). Unary + is never output.
+     Binary sign is indicated as 1 for -, 2 for +.
      Digits are accumulated as a string.
      Variables are accumulated as a list of 1-character strings, but the
      variable list also includes subexpression strings, e.g. '14**(32)'
      ( ... ) gets converted and appended to vars [with the parens included]
      ?^{ ... } gets converted and ? is replaced by ?^( ) and appended to vars
      Subexpression conversions are trigger by ')', '}', or any operator.
+     unary -?^? requires parens: -(?^?)
+     unary -?%? requires parens: mod(-?,?)
   */
   const p=0,q=0,r=0,s=0,t=0,u=0,v=0,w=0,x=0,y=0,z=0;    // for eval test at end
   const theta=0;
-  var js = '';          // output javascript expression
-  var signcount = 0;    // number of minuses + twice number of pluses
-  var digits = '';      // string of digits
-  var vars = [];        // string of variables and subexpressions
-  var unary = true;     // signs are unary
+  var js = '';   // output javascript expression
+  var sign;      // unary sign: 0 -> +, 1 -> -
+  var digits;    // string of digits
+  var vars;      // sequence of variables and subexpressions with implied multiplication
+  var binary;    // 0 if first sign not binary, 1 if -, 2 if +
   var i,b,c;
   var recur = [];       // saved variables for recursion
+  function reset() {    // start of subexpression
+    sign = 0;
+    digits = '';
+    vars = [];
+    binary = 0;
+  }
+  function finish(op) {    // lhs completed with binary op
+    if (digits.length) {
+      vars.push(digits);
+    }
+    if (!vars.length) {
+      if (op.length) {
+	throw new SyntaxError('No left hand arg for '+op+' at '+i);
+      }
+    } else {
+      if (vars[0].slice(-1)==',') {    // complete mod
+	vars[0] += vars.slice(1).join('*')+')';
+	vars.length = 1;
+	sign = 0;
+	digits = '';
+	binary = 0;
+      }
+      if (op=='%') {            // start mod
+	vars[0] = 'mod(' + (sign ? '-1*' : '') + vars.join('*') + ',';
+	vars.length = 1;
+	sign = 0;
+	digits = '';
+      } else {
+	js += (binary ? '+-'[(binary+sign)&1] : sign ? '-' : '') + 
+	  ((vars.length > 1 || !binary && sign && vars[0].indexOf('**') >= 0) ? 
+	   '(' + vars.join('*') + ')' : vars[0]) + op;
+	reset();
+      }
+    }
+  }
+  function usign(op) {    // accumulate unary signs
+    var j;         // 0 -> +, 1-> -
+    var unary=0;   // for accumulating signs
+    while (i < expr.length-1) {
+      if ((j = '+-'.indexOf(expr[i+1])) < 0) break;
+      unary ^= j;
+      ++i;
+    }
+    if (digits.length || vars.length) {    // binary op
+      finish(op);
+      sign = unary;
+    } else {
+      sign ^= '+-'.indexOf(op) ^ unary;
+    }
+  }
+  reset();
   for (i=0; i < expr.length; i++) {
     c = expr[i];
     switch (c) {
@@ -353,19 +506,7 @@ function expr2js(expr) { // convert math expression to javascript expression
 	throw new SyntaxError('Unknown token at '+i);
       }
       i += c.length;
-      if (digits.length) {
-	vars.push(digits);
-      }
-      if (!vars.length) {
-	throw new SyntaxError('No dividend at '+i);
-      }
-      js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-	((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-	 '(' + vars.join('*') + ')' : vars[0]) + '%';
-      signcount = 0;
-      digits = '';
-      vars = [];
-      unary = true;
+      finish('%');
       break;
     case '^' :
       if ((c=expr[++i]) != '{') {
@@ -380,46 +521,31 @@ function expr2js(expr) { // convert math expression to javascript expression
 	throw new SyntaxError('Exponent without base at position '+i);
       }
       recur.push(
-	{'c':c,'js':js,'signcount':signcount,'vars':vars,'unary':unary});
+	{c:c,js:js,sign:sign,vars:vars,binary:binary});
       js = b;
-      signcount = 0;
-      digits = '';
-      vars = [];
-      unary = true;
+      reset();
       break;
     case '(' :
       if (digits.length) {
 	vars.push(digits);
       }
       recur.push(
-	{'c':c,'js':js,'signcount':signcount,'vars':vars,'unary':unary});
+	{c:c,js:js,sign:sign,vars:vars,binary:binary});
       js = c;
-      signcount = 0;
-      digits = '';
-      vars = [];
-      unary = true;
+      reset();
       break;
     case ')' :    // terminates (
     case '}' :    // terminates ^
       if (!recur.length) {
 	throw new SyntaxError('Unmatched '+c+' at position '+i);
       }
-      if (digits.length) {
-	vars.push(digits);
-      }
-      if (vars.length) {
-	js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-	  ((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-	   '(' + vars.join('*') + ')' : vars[0]) + ')';
-      } else {
-	throw new SyntaxError('Empty exponent at position '+i);
-      }
+      finish(')')
       b = recur.pop();
       vars = b.vars;
-      unary = b.unary;
+      binary = b.binary;
       vars.push(js);
       digits = '';
-      signcount = b.signcount;
+      sign = b.sign;
       js = b.js;
       b = b.c;
       if (!(b == '(' && c == ')' || b == '{' && c == '}')) {
@@ -427,64 +553,14 @@ function expr2js(expr) { // convert math expression to javascript expression
       }
       break;
     case '+' :
-      if (digits.length) {
-	vars.push(digits);
-      }
-      if (vars.length) {
-	js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-	  ((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-	   '(' + vars.join('*') + ')' : vars[0]);
-	signcount = 2;
-	digits = '';
-	vars = [];
-	unary = false;
-      }
-      break;
     case '-' :
-      if (digits.length) {
-	vars.push(digits);
-      }
-      if (vars.length) {
-	js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-	  ((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-	   '(' + vars.join('*') + ')' : vars[0]);
-	signcount = 1;
-	digits = '';
-	vars = [];
-	unary = false;
-      } else {
-	signcount += 1;
-      }
+      usign(c);
       break;
     case '\u00d7' :    //times
-      if (digits.length) {
-	vars.push(digits);
-      }
-      if (!vars.length) {
-	throw new SyntaxError('No multiplicand at '+i);
-      }
-      js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-	((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-	 '(' + vars.join('*') + ')' : vars[0]) + '*';
-      signcount = 0;
-      digits = '';
-      vars = [];
-      unary = true;
+      finish('*');
       break;
     case '\u00f7' :    //divide
-      if (digits.length) {
-	vars.push(digits);
-      }
-      if (!vars.length) {
-	throw new SyntaxError('No dividend at '+i);
-      }
-      js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-	((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-	 '(' + vars.join('*') + ')' : vars[0]) + '/';
-      signcount = 0;
-      digits = '';
-      vars = [];
-      unary = true;
+      finish('/');
       break;
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
@@ -525,16 +601,7 @@ function expr2js(expr) { // convert math expression to javascript expression
   if (recur.length) {
     throw new SyntaxError('Premature termination of expression');
   }
-  if (digits.length) {
-    vars.push(digits);
-  }
-  if (vars.length) {
-    js += (signcount ? (signcount&1 ? '-' : '+') : '') +
-      ((vars.length > 1 || unary && signcount && vars[0].indexOf('**') >= 0) ?
-       '(' + vars.join('*') + ')' : vars[0]);
-  } else if (signcount) {
-    throw new SyntaxError('illegitimate expression');
-  }
+  finish('');
   eval(js);    // might get syntax error
   return js;
 }
@@ -641,21 +708,21 @@ function addplot(vars) {    // plot expressions with current limits
     if (tvars[vars[n]]['x']) {
       for (i = 0; i < side; i++) {
 	x = x0 + i*(x1-x0)/(side-1);
-	y = fulleval(vars[n],{'x':x});
+	y = fulleval(vars[n],{x:x});
 	j = (side-1)*(y1-y)/(y1-y0);
 	i ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
       }
     } else if (tvars[vars[n]]['y']) {
       for (j = 0; j < side; j++) {
 	y = y1 - j*(y1-y0)/(side-1);
-	x = fulleval(vars[n],{'y':y});
+	x = fulleval(vars[n],{y:y});
 	i = (side-1)*(x-x0)/(x1-x0);
 	j ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
       }
     } else if (tvars[vars[n]]['theta']) {
       for (k = 0; k < 361; k++) {
 	theta = pi*k/180;
-	r = fulleval(vars[n],{'theta':theta});
+	r = fulleval(vars[n],{theta:theta});
 	x = r*Math.cos(theta);
 	y = r*Math.sin(theta);
 	i = (side-1)*(x-x0)/(x1-x0);
@@ -703,7 +770,7 @@ function factorial(n) {
 </script>
 <style>
 #debug {
-  display:none;
+  display:true;
 }
 button {
   margin:2px;
