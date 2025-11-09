@@ -325,7 +325,7 @@ function setkeys(state) {
   }
 }
 
-function rational(a) {    // convert x to rational
+function rational(a) {    // convert a to rational: [numerator,denominator]
   if (!Number.isFinite(a)) return [a==a && Math.sign(a) || 0,0];
   if (Number.isInteger(a)) return [a,1];
   var b = Math.abs(a);
@@ -349,7 +349,7 @@ function rational(a) {    // convert x to rational
   return [Math.sign(a)*n0,n1];
 }
 
-function xgcd(a,b) {
+function xgcd(a,b) {    // extended gcd: return [g,u,v] where g=ua+vb
   var c=1, d=0, e=0, f=1;
   var g,h;
   var q,r;
