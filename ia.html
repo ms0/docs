@@ -734,6 +734,21 @@ function addplot(vars) {    // plot expressions with current limits
   }
 }
 
+function showhidenext(o) {
+  if (o.innerHTML=='Hide') {
+    o.nextElementSibling.style.display='none';
+    o.innerHTML = 'Show';
+  } else {
+    o.nextElementSibling.style.display='inline';
+    o.innerHTML = 'Hide';
+  }
+}
+
+function showhelp(s) {
+  var o = document.getElementById(s);
+  o.style.display='block';
+}		      
+
 function showpopup(o,s) {
   var b = document.body.getClientRects()[0];
   var r = o.parentNode.getClientRects()[0];
@@ -769,8 +784,11 @@ function factorial(n) {
 */
 </script>
 <style>
+#debugger {
+  font-size:1em;
+}
 #debug {
-  display:true;
+  display:none;
 }
 button {
   margin:2px;
@@ -844,6 +862,7 @@ button {
   background-color:pink;
 }
 #mathdiv {
+  margin-top:10px;
   float:left;
 }
 #keyboard {
@@ -857,6 +876,7 @@ button {
   display:grid;
   grid-template-columns: 20px 100px 313px 100px;
   grid-template-rows: 100px 313px 100px 20px;
+  margin-top:10px;
   margin-left:10px;
 }
 input[type=number]::-webkit-outer-spin-button,
@@ -913,30 +933,69 @@ input[type=number] {
   grid-column-start:1;
   align-self:center;
 }
+p.top {
+  position:absolute;
+  left:0;top:0;
+  text-align:left;
+  font-size:.75em;
+  margin:0;
+}
+#helper {
+  text-decoration:underline;
+  font-size:11px;
+  cursor:context-menu;
+  margin-left:60px;
+}
+#help {
+  position:absolute;
+  left:270px;top:0;
+  width:750px;
+}
+h2 {
+  text-align:center;
+  margin-top:0;
+}
+ul {
+  padding-left:1em;
+  padding-top:0;
+}
+li {
+  text-indent:.25em;
+}
 </style>
 </head>
 <body onload='init()'>
+<p class='top'>
+  <a href='fib.html'>Fi &amp; Lu</a>&nbsp;
+  <a href='area.html'>Area</a>&nbsp;
+  <a href='algebra.html'>Algebra</a>
+  <a href='trig.html'>Trigonometry</a>&nbsp;
+  <a href='func.html'>Functions</a>&nbsp;
+  <a href='complex.html'>Complex Numbers</a>&nbsp;
+  <a href='calc.html'>Calculus</a>
+  <span id='helper' onclick="showhelp('help')">HELP</span>
+</p>
 <div id='mathdiv'>
 <div id='topbox'>
-<div id='mathbox' class='exprbox'><p id='math' draggable='true'></p></div>
+<div id='mathbox' class='exprbox' title='math expression, draggable'><p id='math' draggable='true'></p></div>
 <button id='clear'>Clear</button>
 </div>
 <div id='exprdiv'><p id='expression' contenteditable='plaintext-only'></p><br></div>
 <div id='exprbuttons' tabindex='0'>
-<button id='plus' class='op'>+</button>
-<button id='minus' class='op'>&minus;</button>
-<button id='times' class='op binary'>&times;</button>
-<button id='divide' class='op binary'>&divide;</button>
-<button id='mod' class='op binary'>%</button>
-<button id='powup' class='op'>&uparrow;</button>
-<button id='powdn' class='op closer'>&downarrow;</button>
+<button id='plus' class='op' title='plus (+)'>+</button>
+<button id='minus' class='op' title='minus (-)'>&minus;</button>
+<button id='times' class='op binary' title='times (*)'>&times;</button>
+<button id='divide' class='op binary' title='divide (/)'>&divide;</button>
+<button id='mod' class='op binary' title='mod (%)'>%</button>
+<button id='powup' class='op' title='exponentiate (^)'>&uparrow;</button>
+<button id='powdn' class='op closer' title='end exponent (\\)'>&downarrow;</button>
 <button id='oparen' class='op'>(</button>
 <button id='cparen' class='op closer'>)</button>
 <button id='bs'>Backspace</button>
 <br>
 <button class='var'>e</button>
-<button class='var'>&pi;</button>
-<button class='var'>&tau;</button>
+<button class='var' title='pi'>&pi;</button>
+<button class='var' title='tau=2pi'>&tau;</button>
 <button class='digit'>0</button>
 <button class='digit'>1</button>
 <button class='digit'>2</button>
@@ -948,9 +1007,9 @@ input[type=number] {
 <button class='digit'>8</button>
 <button class='digit'>9</button>
 <button id='decpt'>.</button>
-<button id='bang'>!</button>
+<button id='bang' title='factorial'>!</button>
 </br>
-<button class='var'>&theta;</button>
+<button class='var' title='theta'>&theta;</button>
 <button class='var'>p</button>
 <button class='var'>q</button>
 <button class='var'>r</button>
@@ -962,7 +1021,7 @@ input[type=number] {
 <button class='var'>x</button>
 <button class='var'>y</button>
 <button class='var'>z</button>
-<p id='keyboard' onclick="showpopup(this,'help')">Use keyboard</p>
+<p id='keyboard' onclick="showpopup(this,'keyhelp')">Use keyboard</p>
 </div>
 <div id='exprboxes'>
 <p class='varlabel'>p</p><div id='mathboxp' class='exprbox'></div><button class='up'>PLOT</button>
@@ -977,6 +1036,7 @@ input[type=number] {
 <p class='varlabel'>y</p><div id='mathboxy' class='exprbox'></div><button class='up'>PLOT</button>
 <p class='varlabel'>z</p><div id='mathboxz' class='exprbox'></div><button class='up'>PLOT</button>
 </div>
+<button id='debugger' onclick='showhidenext(this)' title='show/hide javascript code for current math expression'>Show</button>
 <p id='debug'></p>  
 </div>
 <!--Plotting
@@ -995,7 +1055,7 @@ input[type=number] {
   <input id='rgt' class='lim' type='number'></input>
   </div>
 </div>
-<div id='help' class='popup' onclick='this.style.display="none";document.getElementById("expression").focus();'>
+<div id='keyhelp' class='popup' onclick='this.style.display="none";document.getElementById("expression").focus();'>
 <h2>Using the keyboard</h2>
 <ul>
 <li>Use asterisk ( * ) for multiply ( &times; )</li>
@@ -1007,6 +1067,25 @@ input[type=number] {
 </ul>
 <p>Grayed-out selections are ignored.</p>
 <p>Click to hide this popup.</p>	       
+</div>
+<div id='help' class='popup' onclick='this.style.display="none";'>
+<h2>Entering and plotting mathematical expressions</h2>
+<p>Use the buttons and/or your keyboard to enter mathematical expressions, but some buttons do not have keyboard equivalents. Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes.</p>
+<p>Depressing a PLOT button plots the corresponding mathematical expression:</p>
+<ul>
+<li>If the expression ultimately evaluates with a free variable \(x\), \(y=f(x)\) is plotted.</li>
+<li>If the expression ultimately evaluates with a free variable \(y\), \(x=f(y)\) is plotted.</li>
+<li>If the expression ultimately evaluates with a free variable \(\theta\), \(r=f(\theta)\) is plotted.</li>
+</ul>
+<p>The \(x\) and \(y\) limits of the plot are determined by the bottom and left input boxes, respectively.</p>
+<p>Here&rsquo;s an example to try:</p>
+<ul>
+		<li>Enter \(1-p^2&divide;2+p^4&divide;4!-p^6&divide;6!+p^8&divide;8!-p^{10}&divide;10!\) and drag it to box \(q\). (Remember, use the &uparrow; button or the ^ key to exponentiate, and the &downarrow; button or \\ key to end the exponent.)</li>
+<li>Clear, then enter \(t\bmod\tau\) and drag it to box \(p\). (Remember, use the % button or key for mod, the \(\tau\) button for \(\tau\).)</li>
+<li>Finally, Clear, then enter \(\tau x\) and drag it to box \(t\) and click PLOT at box \(q\).</li>
+<li>After observing the result, Clear, then enter \(5\theta\) and drag it to box \(t\).</li>
+</ul>
+<p>This should give you a flavor of what can be done. <b>Click to hide this popup.</b></p>
 </div>
 </body>
 </html>
