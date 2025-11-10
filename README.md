@@ -22,6 +22,8 @@ func.html is an interactive elementary tutorial on functions
 
 gmovie.pdf is a description and frame-by-frame movie of Grover's algorithm
 
+ia.html is an exploratory elementary tutorial/demo for inputting and plotting mathematical expressions; linked from func.html
+
 math.pdf is the unabridged math supplement to Network Security: Private Communication in a Public World
 
 quantum.odp is a nontechnical slideshow on quantum computing
