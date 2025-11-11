@@ -666,6 +666,7 @@ function addplot(vars) {    // plot expressions with current limits
   const y0 = document.getElementById('bot').valueAsNumber;
   const y1 = document.getElementById('top').valueAsNumber;  
   var n,i,j,k;
+  var oi,oj;    // old values to decide between moveTo and lineTo
   var v;
   var x;
   var y;
@@ -704,20 +705,27 @@ function addplot(vars) {    // plot expressions with current limits
   }
   ctx.strokeStyle='black';
   for (n in vars) {
+    oi = oj = -side;
     ctx.beginPath();
     if (tvars[vars[n]]['x']) {
       for (i = 0; i < side; i++) {
 	x = x0 + i*(x1-x0)/(side-1);
 	y = fulleval(vars[n],{x:x});
 	j = (side-1)*(y1-y)/(y1-y0);
-	i ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
+	((i-oi)**2+(j-oj)**2) < (side/16)**2 ? ctx.lineTo(i,j) :
+	  ctx.moveTo(i,j)&ctx.arc(i,j,0,0,2*Math.PI)&ctx.moveTo(i,j);
+	oi = i;
+	oj = j;
       }
     } else if (tvars[vars[n]]['y']) {
       for (j = 0; j < side; j++) {
 	y = y1 - j*(y1-y0)/(side-1);
 	x = fulleval(vars[n],{y:y});
 	i = (side-1)*(x-x0)/(x1-x0);
-	j ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
+	((i-oi)**2+(j-oj)**2) < (side/16)**2 ? ctx.lineTo(i,j) :
+	  ctx.moveTo(i,j)&ctx.arc(i,j,0,0,2*Math.PI)&ctx.moveTo(i,j);
+	oi = i;
+	oj = j;
       }
     } else if (tvars[vars[n]]['theta']) {
       for (k = 0; k < 361; k++) {
@@ -727,7 +735,10 @@ function addplot(vars) {    // plot expressions with current limits
 	y = r*Math.sin(theta);
 	i = (side-1)*(x-x0)/(x1-x0);
 	j = (side-1)*(y1-y)/(y1-y0);
-	k ? ctx.lineTo(i,j) : ctx.moveTo(i,j);
+	((i-oi)**2+(j-oj)**2) < (side/8)**2 ? ctx.lineTo(i,j) :
+	  ctx.moveTo(i,j)&ctx.arc(i,j,0,0,2*Math.PI)&ctx.moveTo(i,j);
+	oi = i;
+	oj = j;
       }
     }
     ctx.stroke();
