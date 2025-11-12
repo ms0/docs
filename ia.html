@@ -718,7 +718,7 @@ function addplot(vars) {    // plot expressions with current limits
 	  if (!i) {
 	    ctx.moveTo(i,j);
 	  } else {
-	    d = Math.abs(j-oj);
+	    d = .875*Math.abs(j-oj);
 	    d < 2 || Math.abs(hj-oj) < d && Math.abs(j-hj) < d ?
 	      ctx.lineTo(i,j) : ctx.moveTo(i,j);
 	  }
@@ -736,7 +736,7 @@ function addplot(vars) {    // plot expressions with current limits
 	  if (!j) {
 	    ctx.moveTo(i,j);
 	  } else {
-	    d = Math.abs(i-oi);
+	    d = .875*Math.abs(i-oi);
 	    d < 2 || Math.abs(hi-oi) < d && Math.abs(i-hi) < d ?
 	      ctx.lineTo(i,j) : ctx.moveTo(i,j);
 	  }
@@ -758,7 +758,7 @@ function addplot(vars) {    // plot expressions with current limits
 	  if (!k) {
 	    ctx.moveTo(i,j);
 	  } else {
-	    d = (i-oi)**2 + (j-oj)**2;
+	    d = .75*((i-oi)**2 + (j-oj)**2);
 	    d < 4 || (hi-oi)**2+(hj-oj)**2 < d && (i-hi)**2+(j-hj)**2 < d ?
 	      ctx.lineTo(i,j) : ctx.moveTo(i,j);
 	  }
