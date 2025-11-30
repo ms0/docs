@@ -382,7 +382,7 @@ function setkeys(state) {
       o = exprbuttons[i];
       o.disabled =
 	o.classList.contains('binary') || o.id.indexOf('pow') >= 0 ||
-	o.id == 'cparen' || o.id == 'bang' || o.id == 'base';
+	o.id == 'cparen' || o.id == 'bang' || o.id == 'base' || o.id == 'comma';
     }
     break;
   case 1 :    // sequence of digits seen
