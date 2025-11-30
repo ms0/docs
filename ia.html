@@ -382,7 +382,7 @@ function setkeys(state) {
       o = exprbuttons[i];
       o.disabled =
 	o.classList.contains('binary') || o.id.indexOf('pow') >= 0 ||
-	o.id == 'cparen' || o.id == 'bang';
+	o.id == 'cparen' || o.id == 'bang' || o.id == 'base';
     }
     break;
   case 1 :    // sequence of digits seen
@@ -392,14 +392,14 @@ function setkeys(state) {
 	o.classList.contains('closer') &&
 	(o.id == 'cparen' && last != 0 && last != 3 ||
 	 o.id == 'powdn' && last != 1 ||
-	 o.id == 'comma' && last != 2 && last != 3);
+	 o.id == 'comma' && last != 2 && last != 3) || o.id =='base';
     }
     break;
   case 2 :    // variable or parenthesized expression seen
     for (i=0; i < exprbuttons.length; i++) {
       o = exprbuttons[i];
       o.disabled =
-	o.id == 'bang' ||
+	o.id == 'bang' || o.id == 'base' ||
 	o.classList.contains('closer') &&
 	(o.id == 'cparen' && last != 0 && last != 3 ||
 	 o.id == 'powdn' && last != 1 ||
@@ -411,14 +411,14 @@ function setkeys(state) {
       o = exprbuttons[i];
       o.disabled =
 	o.classList.contains('closer') || o.id == 'powup' ||
-	o.id == 'bang' || o.classList.contains('binary');
+	o.id == 'bang' || o.id == 'base' || o.classList.contains('binary');
     }
     break;
   case 4 :    // a decimal point has been seen
     for (i=0; i < exprbuttons.length; i++) {
       o = exprbuttons[i];
       o.disabled =
-	o.id == 'decpt' || o.id == 'bang' ||
+	o.id == 'decpt' || o.id == 'bang' || o.id == 'base' ||
 	o.classList.contains('closer') &&
 	(o.id == 'cparen' && last != 0 && last != 3 ||
 	 o.id == 'powdn' && last != 1 ||
