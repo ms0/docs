@@ -10,8 +10,23 @@ const pi = Math.PI;
 const tau = 2*pi;
 const e = Math.E;
 
-var expression;    // input string for math expression
-var parsetable;    // dictionary keyname->buttonelement
+const expr2expression = {    // non-identity conversions from internal string
+  'a' : ' atan',
+  'l' : ' log',
+  'h' : '\u03b8',    // theta
+  'i' : '\u03c0',    // pi
+  'j' : '\u03c4',    // tau
+  '-' : '\u2212',    // minus
+  '*' : '\u00d7',    // times
+  '/' : '\u00f7',    // divide
+  '^' : '\u2191',    // powup
+  '\\': '\u2193',    // powdn
+  '%' : ' mod '
+};
+
+var expr;          // internal string for math expression
+var expression;    // display string for math expression
+var parsetable;    // dictionary exprchar->buttonelement
 var exprbuttons;   // keys to enter components of math expression
 var vv = {};       // variable -> expression
 var plottedvars = [];    // last array of variables that were plotted
@@ -23,6 +38,7 @@ var ctx;
 
 function init() {
   const W = window.innerWidth;
+  expr = '';
   expression = document.getElementById('expression');
   expression.innerHTML = '';
   parsetable = {};
@@ -30,7 +46,7 @@ function init() {
   document.body.addEventListener('keydown',algkey);
   document.getElementById('clear').addEventListener('click',clear);
   var i;
-  var b;
+  var b,c;
   b = document.getElementById('exprbuttons').children;
   for (i=0; i < b.length; i++) {
     if (b[i].id == 'keyboard') {
@@ -38,7 +54,8 @@ function init() {
       b[i].addEventListener('click',bs);
     } else {
       b[i].addEventListener('click',bp);
-      parsetable[b[i].innerHTML] = b[i];
+      c = b[i].innerHTML;
+      parsetable[c.length == 1 ? c : b[i].getAttribute('key')] = b[i];
       exprbuttons.push(b[i]);
     }
   }
@@ -95,12 +112,49 @@ function dropHandler(event) {
   if (n) {
     vv[n] = expr2js(m);
     plot();
-  } else {
-    document.getElementById('expression').innerHTML = m
-      .replace(/-/g,document.getElementById('minus').innerHTML)
-      .replace(/\^{/g,document.getElementById('powup').innerHTML)
-      .replace(/}/g,document.getElementById('powdn').innerHTML)
-      .replace(/\\bmod /g,'%');
+  } else {    // need to recreate expr from TeX
+    var s = m.replace(/-/g,document.getElementById('minus').innerHTML)
+             .replace(/\\bmod /g,'%')
+             .replace(/\\atan/g,'a')
+             .replace(/\\log/g,'l')
+	     .split('');
+    var i;
+    lastopen.length = 0;
+    for (i=0; i<s.length; i++) {
+      switch (s[i]) {
+      case '^':
+	if (s[i+1] == '{') {
+	  s[i++] = expr2expression['^'];
+	  s[i] = '';
+	  lastopen.push(1);
+	}
+      case '_':
+	if (s[i+1] == '{') {
+	  s[++i] = '';
+	  lastopen.push(2);
+	}
+	break;
+      case '(':
+	lastopen.push(0);
+	break;
+      case '{':
+	lastopen.push(1);    // shouldn't happen
+	break;
+      case ')':
+	lastopen.pop();
+	break;
+      case '}':
+	if (lastopen.pop() == 2 && s[i+1] == '(') {
+	  s[i] = ',';
+	  s[++i] = '';
+	} else {
+	  s[i] = expr2expression['\\']
+	}
+      default :
+      }
+    }
+    expr = s.join('');
+    expression.innerHTML = expand(expr);
     document.getElementById('debug').innerHTML = expr2js(m);
     if (t.scrollWidth > t.clientWidth) t.scrollLeft = t.scrollWidth-t.clientWidth;
   }
@@ -125,67 +179,95 @@ function algkey(event) {    // key down
   const k = event.key;
   var o;
   if (k == 'Delete') {
-    expression.innerHTML = '';
+    expr = '';
   } else if (k == 'Backspace') {
-    expression.innerHTML = expression.innerHTML.slice(0,-1);
+    expr = expr.slice(0,-1);
   } else if ('0' <= k && k <= '9') {
-    expression.innerHTML += k;
-  } else if ('p' <= k && k <= 'z' || k == 'e') {
+    expr += k;
+  } else if ('p' <= k && k <= 'z' || k == 'a' || k == 'e') {
     o = document.getElementsByClassName('var')[0];
-    if (!o.disabled) expression.innerHTML += k;
+    if (!o.disabled) expr += k;
+  } else if ('h' <= k && k <= 'j') {
+    o = document.getElementsByClassName('var')[0];
+    if (!o.disabled) expr += expr2expression[k];
   } else if (k == '+') {
     o = document.getElementById('plus');
-    if (!o.disabled) expression.innerHTML += k;
+    if (!o.disabled) expr += k;
   } else if (k == '-') {
     o = document.getElementById('minus');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;
+    if (!o.disabled) expr += o.innerHTML;
   } else if (k == '.') {
     o = document.getElementById('decpt');
-    if (!o.disabled) expression.innerHTML += k;
+    if (!o.disabled) expr += k;
   } else if (k == '(') {
     o = document.getElementById('oparen');
-    if (!o.disabled) expression.innerHTML += k;
+    if (!o.disabled) expr += k;
   } else if (k == ')') {
     o = document.getElementById('cparen');
-    if (!o.disabled) expression.innerHTML += k;
+    if (!o.disabled) expr += k;
   } else if (k == '^') {
     o = document.getElementById('powup');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;
+    if (!o.disabled) expr += o.innerHTML;
   } else if (k == '*') {
     o = document.getElementById('times');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;
+    if (!o.disabled) expr += o.innerHTML;
   } else if (k == '/') {
     o = document.getElementById('divide');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;
+    if (!o.disabled) expr += o.innerHTML;
   } else if (k == '%') {
     o = document.getElementById('mod');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;
+    if (!o.disabled) expr += k;
   } else if (k == '\\') {
     o = document.getElementById('powdn');
-    if (!o.disabled) expression.innerHTML += o.innerHTML;
+    if (!o.disabled) expr += o.innerHTML;
   } else if (k == '!') {
     o = document.getElementById('bang');
-    if (!o.disabled) expression.innerHTML += k;
+    if (!o.disabled) expr += k;
+  } else if (k == ',') {
+    o = document.getElementById('comma');
+    if (!o.disabled) expr += k;
+  } else if (k == 'a') {
+    o = document.getElementById('atan');
+    if (!o.disabled) expr += k;
+  } else if (k == 'l') {
+    o = document.getElementById('log');
+    if (!o.disabled) expr += k;
+  } else if (k == '_') {
+    o = document.getElementById('base');
+    if (!o.disabled) expr += k;
   } else {
     return;
   }
+  expression.innerHTML = expand(expr);
   parse();
 }
 
+function expand(expr) {    // expand expr for display
+  var i,c,d,x=[];
+  for (i=0; i < expr.length; i++) {
+    c = expr[i];
+    x.push((d = expr2expression[c]) ? d : c);
+  }
+  return x.join('');
+}
+
 function clear(event) {    // clear pressed
+  expr = '';
   expression.innerHTML = '';
   parse();
 }
 
 function bs(event) {    // backspace pressed
-  expression.innerHTML = expression.innerHTML.slice(0,-1);
+  expr = expr.slice(0,-1);
+  expression.innerHTML = expand(expr);
   parse();
 }
 
 function bp(event) {    // button pressed
   const o = event.target;
   var c = o.innerHTML;
-  expression.innerHTML += c;
+  expr += c.length == 1 ? c : o.getAttribute('key');
+  expression.innerHTML = expand(expr);
   parse();
 }
 
@@ -195,10 +277,14 @@ var parstate;    /* 0: initial or after unary operator (can't have ^)
 		    3: need binary argument
 		    4: accumulating digits and . seen
 		    5: . is only "digit"
+		    6: log just happened
+		    7: atan just happened
 		 */
-var lastopen = [];    // stack; 0:(, 1:^
+var lastopen = [];    // stack; 0:( or comma, 1:^, 2:log_, 3:atan
 
-function parse() {    // parse expression and return as latex string
+const closure = ')}})';    // closure for lastopen
+
+function parse() {    // parse expression and return in math element as latex string
   /* depending on current value of expression, disable some buttons
      times, divide, and power can only follow a digit or variable
      digits cannot follow variables
@@ -210,7 +296,7 @@ function parse() {    // parse expression and return as latex string
   */
   var i;
   var c,o;
-  var s = expression.innerHTML;
+  var s = expr;
   var m = '\\(';    // math string
   o = document.getElementById('exprdiv');
   if (o.scrollWidth > o.clientWidth) o.scrollLeft = o.scrollWidth-o.clientWidth;
@@ -221,12 +307,12 @@ function parse() {    // parse expression and return as latex string
     o = parsetable[c];
     switch (o.id) {
     case 'oparen' :
+      lastopen.push(parstate==7 ? 3 : 0);
       parstate = 0;
-      lastopen.push(0);
       m += c;
       break;
     case 'cparen' :
-      if (lastopen[lastopen.length-1] == 0) lastopen.pop();
+      lastopen.pop();
       parstate = 2;
       m += c;
       break;
@@ -239,6 +325,24 @@ function parse() {    // parse expression and return as latex string
       lastopen.pop();
       parstate = 2;
       m += '}';
+      break;
+    case 'atan' :
+      parstate = 7;
+      m += '\\atan';
+      break;
+    case 'log' :
+      parstate = 6;
+      m += '\\log';
+      break;
+    case 'base' :
+      lastopen.push(2);
+      parstate = 0;
+      m += '_{'
+      break;
+    case 'comma' :
+      m += lastopen[lastopen.length-1] == 2 ? '}(' : ',';
+      lastopen[lastopen.length-1] = 0;
+      parstate = 0;
       break;
     case 'minus' :
       c = '-';
@@ -256,7 +360,7 @@ function parse() {    // parse expression and return as latex string
     }
   }
   setkeys(parstate);
-  while ((i = lastopen.pop()) != undefined) m += i ? '}' : '';
+  while ((i = lastopen.pop()) != undefined) m += closure[i];
   m += '\\)';
   document.getElementById('debug').innerHTML = expr2js(m.slice(2,-2));
   MathJax.typesetClear([document.getElementById('mathbox')]);
@@ -269,6 +373,7 @@ function parse() {    // parse expression and return as latex string
 function setkeys(state) {
   /* enable and disable keys as appropriate for the state
   */
+  const last = lastopen[lastopen.length-1];
   var i;
   var o;
   switch (state) {
@@ -285,8 +390,9 @@ function setkeys(state) {
       o = exprbuttons[i];
       o.disabled =
 	o.classList.contains('closer') &&
-	(o.id == 'cparen' && lastopen[lastopen.length-1] != 0 ||
-	 o.id == 'powdn' && lastopen[lastopen.length-1] != 1);
+	(o.id == 'cparen' && last != 0 && last != 3 ||
+	 o.id == 'powdn' && last != 1 ||
+	 o.id == 'comma' && last != 2 && last != 3);
     }
     break;
   case 2 :    // variable or parenthesized expression seen
@@ -295,8 +401,9 @@ function setkeys(state) {
       o.disabled =
 	o.id == 'bang' ||
 	o.classList.contains('closer') &&
-	(o.id == 'cparen' && lastopen[lastopen.length-1] != 0 ||
-	 o.id == 'powdn' && lastopen[lastopen.length-1] != 1);
+	(o.id == 'cparen' && last != 0 && last != 3 ||
+	 o.id == 'powdn' && last != 1 ||
+	 o.id == 'comma' && last != 2 && last != 3);
     }
     break;
   case 3 :    // need argument
@@ -313,8 +420,9 @@ function setkeys(state) {
       o.disabled =
 	o.id == 'decpt' || o.id == 'bang' ||
 	o.classList.contains('closer') &&
-	(o.id == 'cparen' && lastopen[lastopen.length-1] != 0 ||
-	 o.id == 'powdn' && lastopen[lastopen.length-1] != 1);
+	(o.id == 'cparen' && last != 0 && last != 3 ||
+	 o.id == 'powdn' && last != 1 ||
+	 o.id == 'comma' && last != 2 && last != 3);
     }
     break;
   case 5 :    // a lone decimal point
@@ -322,6 +430,21 @@ function setkeys(state) {
       o = exprbuttons[i];
       o.disabled = !o.classList.contains('digit');
     }
+    break;
+  case 6 :    // log: only _ and ( are legal
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled = o.id != 'oparen' && o.id != 'base';
+    }
+    break;
+  case 7 :    // atan: only ( is legal
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled = o.id != 'oparen';
+    }
+    break;
+  default:
+    throw new Error('unknown parstate '+state);
   }
 }
 
@@ -392,6 +515,14 @@ function factor(n,b) {    // factor n into primes up to (but not including) b
   return f;
 }
 
+function atan(y,x) {
+  return Math.atan2(y,x==undefined?1:x);
+}
+
+function blog(b,a) {    // log, but with args reversed
+  return Math.log(a)/Math.log(b);
+}
+
 function mod(a,b) {    // mathematical mod function
   // Note: javascript % is in (-|b|,|b|)
   b = Math.abs(b);
@@ -444,7 +575,7 @@ function expr2js(expr) { // convert math expression to javascript expression
   var digits;    // string of digits
   var vars;      // sequence of variables and subexpressions with implied multiplication
   var binary;    // 0 if first sign not binary, 1 if -, 2 if +
-  var i,b,c;
+  var i,b,c,d;
   var recur = [];       // saved variables for recursion
   function reset() {    // start of subexpression
     sign = 0;
@@ -473,7 +604,7 @@ function expr2js(expr) { // convert math expression to javascript expression
 	vars.length = 1;
 	sign = 0;
 	digits = '';
-      } else {
+      } else {    // append js with unary sign and accumulated vars, followed by op
 	js += (binary ? '+-'[(binary+sign)&1] : sign ? '-' : '') + 
 	  ((vars.length > 1 || !binary && sign && vars[0].indexOf('**') >= 0) ? 
 	   '(' + vars.join('*') + ')' : vars[0]) + op;
@@ -501,12 +632,64 @@ function expr2js(expr) { // convert math expression to javascript expression
     c = expr[i];
     switch (c) {
     case '\\':
-      c = expr.slice(i+1).match(/^\w*\s*/)[0];
-      if (c.slice(0,4) != 'bmod') {
+      c = expr.slice(i+1).match(/(^\w*)\s*/);
+      i += 1+c[0].length;
+      switch (c[1]) {
+      case 'bmod' :
+	i--;
+	finish('%');
+	break;
+      case 'log_' :
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	if ((c=expr[i]) != '{') {
+	  throw new SyntaxError('Improper base at '+i);
+	}
+	// process base (ending in })
+	vars.push('blog(');
+	recur.push(
+	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	reset();
+	break;
+      case 'log' :
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	if ((c=expr[i]) != '(') {
+	  throw new SyntaxError('log arg must be parenthesized');
+	}
+	vars.push('blog(e,');
+	recur.push(	  // process arg ending in )
+	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	reset();
+	break;
+      case 'atan' :
+	if ((c=expr[i]) != '(') {
+	  throw new SyntaxError('Improper arg at '+i);
+	}
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	// first arg ends with , or only arg ends with )
+	vars.push('atan(');
+	recur.push(
+	    {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	reset();
+	break;
+      default:
 	throw new SyntaxError('Unknown token at '+i);
       }
-      i += c.length;
-      finish('%');
+      break;
+    case ',' :    // first arg of atan
+      if (!recur.length) {
+	throw new SyntaxError('Unexpected comma at position '+i);
+      }
+      finish(',');
+      b = recur[recur.length-1];
+      b.vars[b.vars.length-1] += js;
+      js = '';
+      reset();
       break;
     case '^' :
       if ((c=expr[++i]) != '{') {
@@ -516,13 +699,13 @@ function expr2js(expr) { // convert math expression to javascript expression
 	vars.push(digits);
       }
       if (vars.length) {
-	b = vars.pop() + '**(';
+	vars.push(vars.pop() + '**(');
       } else {
 	throw new SyntaxError('Exponent without base at position '+i);
       }
       recur.push(
 	{c:c,js:js,sign:sign,vars:vars,binary:binary});
-      js = b;
+      js = '';
       reset();
       break;
     case '(' :
@@ -534,16 +717,33 @@ function expr2js(expr) { // convert math expression to javascript expression
       js = c;
       reset();
       break;
+    case '}' :    // terminates ^ or _
     case ')' :    // terminates (
-    case '}' :    // terminates ^
       if (!recur.length) {
 	throw new SyntaxError('Unmatched '+c+' at position '+i);
       }
-      finish(')')
+      b = recur[recur.length-1];
+      if (b.vars.length && b.vars[b.vars.length-1] == 'blog(') {
+	if ((c=expr[++i]) != '(') {
+	  throw new SyntaxError('log arg must be parenthesized');
+	}
+	b.c = c;
+	finish(',');
+	b.vars[b.vars.length-1] += js;
+	js = '';
+	reset();
+	break;
+      }
+      finish(')');
       b = recur.pop();
       vars = b.vars;
       binary = b.binary;
-      vars.push(js);
+      if (b.vars.length &&
+	  (d = b.vars[b.vars.length-1].slice(-1)) == ',' || d == '(') {
+	b.vars[b.vars.length-1] += js;
+      } else {
+	vars.push(js);
+      }
       digits = '';
       sign = b.sign;
       js = b.js;
@@ -815,12 +1015,15 @@ function factorial(n) {
 /* idea for new scheme:
    boxes for constants, variables, numbers, operations; arrows for interaction
    ... converted to math expressions
-   always one output, but possible multiple inputs, e.g. atan2, b^x, log_b x
+   always one output, but possible multiple inputs, e.g. atan, b^x, log_b x
    ... the last two defaulting b to e
+   ... log without paren terminates with any operator except unary +- or ^
+   ... should we allow log^ ? probably not
    ... Sum and Product ?
 */
 </script>
 <style>
+.invisible {display:none}
 #debugger {
   font-size:1em;
 }
@@ -834,7 +1037,8 @@ button {
 #mathbox {
   margin-bottom:2px;
 }
-#expression,#bs {display:inline;}
+#bs {margin-left:32px;}
+#expression {display:inline;}
 #exprdiv {
   overflow:hidden;
   white-space:nowrap;
@@ -999,6 +1203,14 @@ ul {
 li {
   text-indent:.25em;
 }
+table {
+  border-collapse:collapse;
+  margin:0 auto;
+}
+td {
+  text-align:center;
+  width:30px;
+}
 </style>
 </head>
 <body onload='init()'>
@@ -1019,20 +1231,23 @@ li {
 </div>
 <div id='exprdiv'><p id='expression' contenteditable='plaintext-only'></p><br></div>
 <div id='exprbuttons' tabindex='0'>
-<button id='plus' class='op' title='plus (+)'>+</button>
-<button id='minus' class='op' title='minus (-)'>&minus;</button>
-<button id='times' class='op binary' title='times (*)'>&times;</button>
-<button id='divide' class='op binary' title='divide (/)'>&divide;</button>
-<button id='mod' class='op binary' title='mod (%)'>%</button>
-<button id='powup' class='op' title='exponentiate (^)'>&uparrow;</button>
-<button id='powdn' class='op closer' title='end exponent (\\)'>&downarrow;</button>
-<button id='oparen' class='op'>(</button>
-<button id='cparen' class='op closer'>)</button>
+<button class='var' title='theta (h)' key='h'>&theta;</button>
+<button class='var'>p</button>
+<button class='var'>q</button>
+<button class='var'>r</button>
+<button class='var'>s</button>
+<button class='var'>t</button>
+<button class='var'>u</button>
+<button class='var'>v</button>
+<button class='var'>w</button>
+<button class='var'>x</button>
+<button class='var'>y</button>
+<button class='var'>z</button>
 <button id='bs'>Backspace</button>
 <br>
 <button class='var'>e</button>
-<button class='var' title='pi'>&pi;</button>
-<button class='var' title='tau=2pi'>&tau;</button>
+<button class='var' title='pi (i)' key='i'>&pi;</button>
+<button class='var' title='tau=2pi (j)' key='j'>&tau;</button>
 <button class='digit'>0</button>
 <button class='digit'>1</button>
 <button class='digit'>2</button>
@@ -1045,20 +1260,20 @@ li {
 <button class='digit'>9</button>
 <button id='decpt'>.</button>
 <button id='bang' title='factorial'>!</button>
-</br>
-<button class='var' title='theta'>&theta;</button>
-<button class='var'>p</button>
-<button class='var'>q</button>
-<button class='var'>r</button>
-<button class='var'>s</button>
-<button class='var'>t</button>
-<button class='var'>u</button>
-<button class='var'>v</button>
-<button class='var'>w</button>
-<button class='var'>x</button>
-<button class='var'>y</button>
-<button class='var'>z</button>
-<p id='keyboard' onclick="showpopup(this,'keyhelp')">Use keyboard</p>
+<br>
+<button id='plus' class='op' title='plus (+)' key='+'>+</button>
+<button id='minus' class='op' title='minus (-)' key='-'>&minus;</button>
+<button id='times' class='op binary' title='times (*)' key='*'>&times;</button>
+<button id='divide' class='op binary' title='divide (/)' key='/'>&divide;</button>
+<button id='mod' class='op binary' title='modulo (%)' key='%'>mod</button>
+<button id='powup' class='op' title='exponentiate (^)' key='^'>&uparrow;</button>
+<button id='powdn' class='op closer' title='end exponent (\)' key='\\'>&downarrow;</button>
+<button id='oparen' class='op' key='('>(</button>
+<button id='comma' class='op closer' title='end base or first arg' key=','>,</button>
+<button id='cparen' class='op closer' key=')'>)</button>
+<button id='log' class='op' title='logarithm (l), default base = e' key='l'>log</button>
+<button id='base' class='op' title='base of log, terminated with comma' key='_'>_</button>
+<button id='atan' class='op' title='arctangent (a), 1 or 2 args' key='a'>atan</button>
 </div>
 <div id='exprboxes'>
 <p class='varlabel'>p</p><div id='mathboxp' class='exprbox'></div><button class='up'>PLOT</button>
@@ -1075,6 +1290,7 @@ li {
 </div>
 <button id='debugger' onclick='showhidenext(this)' title='show/hide javascript code for current math expression'>Show</button>
 <p id='debug'></p>  
+<p class='invisible'>\(\DeclareMathOperator{\atan}{atan}\)</p>
 </div>
 <!--Plotting
     We have a canvas for the plot
@@ -1092,33 +1308,24 @@ li {
   <input id='rgt' class='lim' type='number'></input>
   </div>
 </div>
-<div id='keyhelp' class='popup' onclick='this.style.display="none";document.getElementById("expression").focus();'>
-<h2>Using the keyboard</h2>
-<ul>
-<li>Use asterisk ( * ) for multiply ( &times; )</li>
-<li>Use slash ( / ) for divide ( &divide; )</li>
-<li>Use hyphen ( - ) for minus ( &minus; )</li>
-<li>Use caret ( ^ ) to start exponent ( &uparrow; )</li>
-<li>Use backslash ( \\ ) to end exponent ( &downarrow; )</li>
-<li>Use percent ( % ) for modulo ( mod )</li>
-</ul>
-<p>Grayed-out selections are ignored.</p>
-<p>Click to hide this popup.</p>	       
-</div>
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
-<p>Use the buttons and/or your keyboard to enter mathematical expressions, but some buttons do not have keyboard equivalents. Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes.</p>
+<p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
+<table><tbody><tr><td>%</td><td>a</td><td>l</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
+<td>mod</td><td>atan</td><td>log</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
+<p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes.</p>
 <p>Depressing a PLOT button plots the corresponding mathematical expression:</p>
 <ul>
 <li>If the expression ultimately evaluates with a free variable \(x\), \(y=f(x)\) is plotted.</li>
 <li>If the expression ultimately evaluates with a free variable \(y\), \(x=f(y)\) is plotted.</li>
 <li>If the expression ultimately evaluates with a free variable \(\theta\), \(r=f(\theta)\) is plotted.</li>
+<li>To plot a constant function, use an expression with the free variable multiplied by 0.</li>
 </ul>
 <p>The \(x\) and \(y\) limits of the plot are determined by the bottom and left input boxes, respectively.</p>
 <p>Here&rsquo;s an example to try:</p>
 <ul>
-		<li>Enter \(1-p^2&divide;2+p^4&divide;4!-p^6&divide;6!+p^8&divide;8!-p^{10}&divide;10!\) and drag it to box \(q\). (Remember, use the &uparrow; button or the ^ key to exponentiate, and the &downarrow; button or \\ key to end the exponent.)</li>
-<li>Clear, then enter \(t\bmod\tau\) and drag it to box \(p\). (Remember, use the % button or key for mod, the \(\tau\) button for \(\tau\).)</li>
+<li>Enter \(1-p^2&divide;2+p^4&divide;4!-p^6&divide;6!+p^8&divide;8!-p^{10}&divide;10!\) and drag it to box \(q\). (Remember, use the &uparrow; button or the ^ key to exponentiate, and the &downarrow; button or \\ key to end the exponent.)</li>
+<li>Clear, then enter \(t\bmod\tau\) and drag it to box \(p\). (Remember, use the mod button or % key for mod, the \(\tau\) button or j key for \(\tau\).)</li>
 <li>Finally, Clear, then enter \(\tau x\) and drag it to box \(t\) and click PLOT at box \(q\).</li>
 <li>After observing the result, Clear, then enter \(5\theta\) and drag it to box \(t\).</li>
 </ul>
@@ -1137,9 +1344,14 @@ li {
     v closes ^, provided there are no unclosed (s
     Only legitimate continuations of expression can be selected (others are grayed out)
     Selections:
-    operators: + - x / ^ v ( ) (square?root??)
+    operators: + - x / mod ^ v ( ) (square?root??)
     variables: r s t u v w x y z (concatenation is multiplication)
-    constants: 0 1 2 3 4 5 6 7 8 9 (concatenation is concatenation)
+    constants: 0 1 2 3 4 5 6 7 8 9 (concatenation is concatenation) !
+
+    additional operators: log_b x, atan(y,x)
+      atan first arg can be terminated with , or ). If ), second arg is 1.
+    allow restricted mode where some operations/variables don't appear?
+
     commands: new? plot?     
     = ?
     apply op arg to both sides ?
