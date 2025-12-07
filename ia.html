@@ -1227,7 +1227,7 @@ td {
 </p>
 <div id='mathdiv'>
 <div id='topbox'>
-<div id='mathbox' class='exprbox' title='math expression, draggable'><p id='math' draggable='true'></p></div>
+<div id='mathbox' class='exprbox' title='math expression; drag to a labeled box below to plot'><p id='math' draggable='true'></p></div>
 <button id='clear'>Clear</button>
 </div>
 <div id='exprdiv'><p id='expression' contenteditable='plaintext-only'></p><br></div>
@@ -1314,8 +1314,8 @@ td {
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
 <table><tbody><tr><td>%</td><td>a</td><td>l</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
 <td>mod</td><td>atan</td><td>log</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
-<p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes.</p>
-<p>Depressing a PLOT button plots the corresponding mathematical expression:</p>
+<p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes. If any variable is defined using itself, it cannot be used for plotting.</p>
+<p>Depressing a PLOT button plots the mathematical expression to its left:</p>
 <ul>
 <li>If the expression ultimately evaluates with a free variable \(x\), \(y=f(x)\) is plotted.</li>
 <li>If the expression ultimately evaluates with a free variable \(y\), \(x=f(y)\) is plotted.</li>
