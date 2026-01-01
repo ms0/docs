@@ -352,13 +352,17 @@ function drawcirc(k) {
 
 function showpopup(o,s) {
   var b = document.body.getClientRects()[0];
-  var r = o.parentNode.getClientRects()[0];
+  var r = o.getClientRects()[0];
   o = document.getElementById(s);
   o.style.display='block';
   var q = o.getClientRects()[0];
   o.style.position = 'absolute';
-  o.style.left = (r.width-q.width)/2+'px';
-  o.style.top = (r.top+r.bottom-q.height)/2-b.top+'px';
+  o.style.left = Math.max(window.scrollX,
+			  Math.min(window.scrollX+window.innerWidth-q.width,
+				   (r.width-q.width)/2))+'px';
+  o.style.top = Math.max(window.scrollY,
+			 Math.min(window.scrollY+window.innerHeight-q.height,
+				  (r.top+r.bottom-q.height)/2-b.top))+'px';
 }
 </script>
 <style>
@@ -409,7 +413,9 @@ body {
   max-width:inherit;
 }
 p.top {
-  position:absolute;
+  background-color:white;
+  z-index:1;
+  position:fixed;
   left:0;top:0;
   text-align:left;
   font-size:.75em;
