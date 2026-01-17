@@ -740,7 +740,7 @@ function expr2js(expr) { // convert math expression to javascript expression
       vars = b.vars;
       binary = b.binary;
       if (b.vars.length &&
-	  (d = b.vars[b.vars.length-1].slice(-1)) == ',' || d == '(') {
+	  ((d = b.vars[b.vars.length-1].slice(-1)) == ',' || d == '(')) {
 	b.vars[b.vars.length-1] += js;
       } else {
 	vars.push(js);
