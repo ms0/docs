@@ -26,6 +26,8 @@ ia.html is an exploratory elementary tutorial/demo for inputting and plotting ma
 
 math.pdf is the unabridged math supplement to Network Security: Private Communication in a Public World
 
+pythonsux.pdf is a Python critique I presented at a Python meetup. Video at https://www.youtube.com/watch?v=uPKY1W-2EVQ
+
 quantum.odp is a nontechnical slideshow on quantum computing
 
 secretsharing.html is a slightly interactive tutorial slide show on secret sharing
