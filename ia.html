@@ -3,7 +3,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <script>
-window.MathJax = {
+MathJax = {
   loader: {
     load: ['[tex]/mathtools']
   },
@@ -90,6 +90,7 @@ function init() {
   expression.innerHTML = '';
   parsetable = {};
   exprbuttons = [];
+  document.body.addEventListener('paste',paste);
   document.body.addEventListener('keydown',algkey);
   document.getElementById('clear').addEventListener('click',clear);
   var i;
@@ -152,7 +153,19 @@ function dropHandler(event) {
   var t = event.target;
   while (t.id.slice(0,7) != 'mathbox') t = t.parentNode;
   const n = t.id.slice(7);
-  const m = MathJax.startup.document.getMathItemsWithin([document.getElementById(data)])[0].math;
+  const s = document.getElementById(data);
+  const m = MathJax.startup.document.getMathItemsWithin([s])[0].math;
+  if (data == 'math') {
+    clear();
+  } else {
+    MathJax.typesetClear([s]);
+    s.innerHTML = '';
+  }
+  drop(m,n);
+}
+
+function drop(m,n) {
+  const t = document.getElementById('mathbox'+n);
   const x = "<p id='math" + n + "' draggable='true'>\\(" + m + "\\)</p>";
   MathJax.typesetClear([t]);
   t.innerHTML = x;
@@ -161,40 +174,42 @@ function dropHandler(event) {
     vv[n] = expr2js(m);
     plot();
   } else {    // need to recreate expr from TeX
-    var s = m
-	.replace(/-/g,document.getElementById('minus').innerHTML)
-        .replace(/\\bmod /g,'%')
-        .replace(/\\atan/g,'a')
-        .replace(/\\log/g,'l')
-	.replace(/\\sgn\(/g,'S(')
-	.replace(/\\abs/g,'V')
-	.replace(/\\sin\(/g,'b(')
-	.replace(/\\cos\(/g,'c(')
-	.replace(/\\tan\(/g,'d(')
-	.replace(/\\asin\(/g,'f(')
-	.replace(/\\acos\(/g,'c(')
-	.replace(/\\atanh\(/g,'A(')
-	.replace(/\\sinh\(/g,'B(')
-	.replace(/\\cosh\(/g,'C(')
-	.replace(/\\tanh\(/g,'D(')
-	.replace(/\\exp\(/g,'E(')
-	.replace(/\\asinh\(/g,'F(')
-	.replace(/\\acosh\(/g,'G(')
-	.split('');
+    m = m.replace(/-/g,document.getElementById('minus').innerHTML)
+         .replace(/\\theta/g,'\u03b8')
+         .replace(/\\pi/g,'\u03c0')
+         .replace(/\\tau/g,'\u03c4')
+         .replace(/\\bmod/g,'%')
+         .replace(/\\atan/g,'a')
+         .replace(/\\log/g,'l')
+	 .replace(/\\sgn\(/g,'S(')
+	 .replace(/\\abs/g,'V')
+	 .replace(/\\sin\(/g,'b(')
+	 .replace(/\\cos\(/g,'c(')
+	 .replace(/\\tan\(/g,'d(')
+	 .replace(/\\asin\(/g,'f(')
+	 .replace(/\\acos\(/g,'c(')
+	 .replace(/\\atanh\(/g,'A(')
+	 .replace(/\\sinh\(/g,'B(')
+	 .replace(/\\cosh\(/g,'C(')
+	 .replace(/\\tanh\(/g,'D(')
+	 .replace(/\\exp\(/g,'E(')
+	 .replace(/\\asinh\(/g,'F(')
+	 .replace(/\\acosh\(/g,'G(')
+	 .split('');
     var i;
     var c;
     lastopen.length = 0;
-    for (i=0; i<s.length; i++) {
-      switch (s[i]) {
+    for (i=0; i<m.length; i++) {
+      switch (m[i]) {
       case '^':
-	if (s[i+1] == '{') {
-	  s[i++] = expr2expression['^'];
-	  s[i] = '';
+	if (m[i+1] == '{') {
+	  m[i++] = expr2expression['^'];
+	  m[i] = '';
 	  lastopen.push(1);
 	}
       case '_':
-	if (s[i+1] == '{') {
-	  s[++i] = '';
+	if (m[i+1] == '{') {
+	  m[++i] = '';
 	  lastopen.push(2);
 	}
 	break;
@@ -203,27 +218,27 @@ function dropHandler(event) {
 	break;
       case '{':
 	lastopen.push(0);
-	s[i] = '(';
+	m[i] = '(';
 	break;
       case ')':
 	lastopen.pop();
 	break;
       case '}':
 	c = lastopen.pop();
-	if (c == 2 && s[i+1] == '(') {
-	  s[i] = ',';
-	  s[++i] = '';
+	if (c == 2 && m[i+1] == '(') {
+	  m[i] = ',';
+	  m[++i] = '';
 	} else if (c == 1) {
-	  s[i] = expr2expression['\\']
+	  m[i] = expr2expression['\\']
 	} else {
-	  s[i] = ')';
+	  m[i] = ')';
 	}
       default :
       }
     }
     expr = [];
-    for (i=0; i< s.length; i++) {
-      if (c = s[i]) expr.push(c);
+    for (i=0; i< m.length; i++) {
+      if (c = m[i]) expr.push(c);
     }
     expression.innerHTML = expand(expr);
     parse();
@@ -247,10 +262,34 @@ function enabled(o) {
   return (!o.disabled && o.offsetWidth);
 }
 
+function copyandpaste(event) {
+  // from a selected math expression
+  event.stopPropagation();
+  drop(MathJax.startup.document.getMathItemsWithin([event.target])[0].math,'');
+}
+
+function paste(event) {
+  // from key-sequence text
+  if (event.target.tagName == 'INPUT') return;
+  const text = event.clipboardData.getData('Text/plain');
+  event.preventDefault();
+  clear();
+  for (i = 0; i < text.length; i++) {
+    try {
+      dokey(text[i]);
+    } catch(error) {
+    }
+  }
+}
+
 function algkey(event) {    // key down
   if (event.target.tagName == 'INPUT') return;
+  if (event.ctrlKey || event.metaKey) return;
   event.preventDefault();
-  const k = event.key;
+  dokey(event.key);
+}
+
+function dokey(k) {
   var o;
   if (k.length > 1) {
     if (k == 'Delete') {
@@ -375,6 +414,7 @@ function parse() {    // parse expression and return in math element as latex st
   for (i = 0; i < s.length; i++) {
     c = s[i];
     o = parsetable[c];
+    if (!o) continue;
     switch (o.id) {
     case 'oparen' :
       if (parstate == 9) {
@@ -1418,6 +1458,12 @@ span {
   text-decoration:underline;
   cursor:context-menu;
 }
+.nopoint {
+  pointer-events:none;
+}
+.copy {
+  cursor:copy;
+}
 </style>
 </head>
 <body onload='init()'>
@@ -1459,7 +1505,6 @@ span {
 <button class='var'>y</button>
 <button class='var'>z</button>
 <button id='bs'>Backspace</button>
-<button id='clear'>Clear</button>
 <br>
 <button class='var'>e</button>
 <button class='var' title='pi (i)' key='i'>&pi;</button>
@@ -1555,10 +1600,10 @@ span {
 <p>The \(x\) and \(y\) limits of the plot are determined by the bottom and left input boxes, respectively.</p>
 <p>Here&rsquo;s an example to try:</p>
 <ul>
-<li>Enter \(1-p^2&divide;2+p^4&divide;4!-p^6&divide;6!+p^8&divide;8!-p^{10}&divide;10!\) and drag it to box \(q\). (Remember, use the &uparrow; button or the ^ key to exponentiate, and the &downarrow; button or \\ key to end the exponent.)</li>
-<li>Clear, then enter \(t\mod\tau\) and drag it to box \(p\). (Remember, use the mod button or % key for mod, the \(\tau\) button or j key for \(\tau\).)</li>
-<li>Finally, Clear, then enter \(\tau x\) and drag it to box \(t\) and click PLOT at box \(q\).</li>
-<li>After observing the result, Clear, then enter \(5\theta\) and drag it to box \(t\).</li>
+  <li>Enter <span class='copy' onclick='copyandpaste(event)'><span class='nopoint'>\(1-p^{2}&divide;2+p^{4}&divide;4!-p^{6}&divide;6!+p^{8}&divide;8!-p^{10}&divide;10!\)</span></span> and drag it to box \(q\). (Remember, use the &uparrow; button or the ^ key to exponentiate, and the &downarrow; button or \ key to end the exponent.)</li>
+<li>Then enter <span class='copy' onclick='copyandpaste(event)'><span class='nopoint'>\(t\bmod\tau\)</span></span> and drag it to box \(p\). (Remember, use the mod button or % key for mod, the \(\tau\) button or j key for \(\tau\).)</li>
+<li>Finally, enter <span class='copy' onclick='copyandpaste(event)'><span class='nopoint'>\(\tau x\)</span></span> and drag it to box \(t\) and click PLOT at box \(q\).</li>
+  <li>After observing the result, enter <span class='copy' onclick='copyandpaste(event)'><span class='nopoint'>\(5\theta\)</span></span> and drag it to box \(t\).</li>
 </ul>
 <p>This should give you a flavor of what can be done. <b>Click to hide this popup.</b></p>
 <p><span onclick='advance(event)'>Enable advanced math functions</span>:</p>
