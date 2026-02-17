@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script>
+window.MathJax = {
+  loader: {
+    load: ['[tex]/mathtools']
+  },
+  tex: {
+    packages: {'[+]':['mathtools']}
+  }
+};
+</script>
 <script type="text/javascript" id="MathJax-script" async
   src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js">
 </script>
@@ -9,6 +19,7 @@
 const pi = Math.PI;
 const tau = 2*pi;
 const e = Math.E;
+Math.sgn = Math.sign;
 
 const symbol = /\\[A-Za-z]+[A-Za-z0-9]*/;
 const number = /(\d+\.?\d*|\d*\.?\d+)/;
@@ -32,7 +43,21 @@ function tokenize(m) {
 }
 
 const expr2expression = {    // non-identity conversions from internal string
+  'A' : ' atanh',
+  'B' : ' sinh',
+  'C' : ' cosh',
+  'D' : ' tanh',
+  'E' : ' exp',
+  'F' : ' asinh',
+  'G' : ' acosh',
+  'S' : ' sgn',
+  'V' : ' abs',
   'a' : ' atan',
+  'b' : ' sin',
+  'c' : ' cos',
+  'd' : ' tan',
+  'f' : ' asin',
+  'g' : ' acos',
   'l' : ' log',
   'h' : '\u03b8',    // theta
   'i' : '\u03c0',    // pi
@@ -110,6 +135,7 @@ function init() {
     b[i].addEventListener('change',updateLimits);
   }
   MathJax.startup.output.options.linebreaks.inline = false;
+  initGamma(17);    // seems to produce best precision
 }
 
 function dragStartHandler(event) {
@@ -135,11 +161,26 @@ function dropHandler(event) {
     vv[n] = expr2js(m);
     plot();
   } else {    // need to recreate expr from TeX
-    var s = m.replace(/-/g,document.getElementById('minus').innerHTML)
-             .replace(/\\bmod /g,'%')
-             .replace(/\\atan/g,'a')
-             .replace(/\\log/g,'l')
-	     .split('');
+    var s = m
+	.replace(/-/g,document.getElementById('minus').innerHTML)
+        .replace(/\\bmod /g,'%')
+        .replace(/\\atan/g,'a')
+        .replace(/\\log/g,'l')
+	.replace(/\\sgn\(/g,'S(')
+	.replace(/\\abs/g,'V')
+	.replace(/\\sin\(/g,'b(')
+	.replace(/\\cos\(/g,'c(')
+	.replace(/\\tan\(/g,'d(')
+	.replace(/\\asin\(/g,'f(')
+	.replace(/\\acos\(/g,'c(')
+	.replace(/\\atanh\(/g,'A(')
+	.replace(/\\sinh\(/g,'B(')
+	.replace(/\\cosh\(/g,'C(')
+	.replace(/\\tanh\(/g,'D(')
+	.replace(/\\exp\(/g,'E(')
+	.replace(/\\asinh\(/g,'F(')
+	.replace(/\\acosh\(/g,'G(')
+	.split('');
     var i;
     var c;
     lastopen.length = 0;
@@ -161,17 +202,21 @@ function dropHandler(event) {
 	lastopen.push(0);
 	break;
       case '{':
-	lastopen.push(1);    // shouldn't happen
+	lastopen.push(0);
+	s[i] = '(';
 	break;
       case ')':
 	lastopen.pop();
 	break;
       case '}':
-	if (lastopen.pop() == 2 && s[i+1] == '(') {
+	c = lastopen.pop();
+	if (c == 2 && s[i+1] == '(') {
 	  s[i] = ',';
 	  s[++i] = '';
-	} else {
+	} else if (c == 1) {
 	  s[i] = expr2expression['\\']
+	} else {
+	  s[i] = ')';
 	}
       default :
       }
@@ -181,8 +226,7 @@ function dropHandler(event) {
       if (c = s[i]) expr.push(c);
     }
     expression.innerHTML = expand(expr);
-    document.getElementById('debug').innerHTML = expr2js(m);
-    if (t.scrollWidth > t.clientWidth) t.scrollLeft = t.scrollWidth-t.clientWidth;
+    parse();
   }
 }
 
@@ -199,80 +243,78 @@ function toggle(event) {
   plot();
 }
 
+function enabled(o) {
+  return (!o.disabled && o.offsetWidth);
+}
+
 function algkey(event) {    // key down
   if (event.target.tagName == 'INPUT') return;
   event.preventDefault();
   const k = event.key;
   var o;
-  if (k == 'Delete') {
-    expr = [];
-  } else if (k == 'Backspace') {
-    expr.pop();
+  if (k.length > 1) {
+    if (k == 'Delete') {
+      expr = [];
+    } else if (k == 'Backspace') {
+      expr.pop();
+    }
   } else if ('0' <= k && k <= '9') {
     expr.push(k);
-  } else if ('p' <= k && k <= 'z' || k == 'a' || k == 'e') {
+  } else if ('ehijpqrstuvwxyz'.indexOf(k) >= 0) {
     o = document.getElementsByClassName('var')[0];
-    if (!o.disabled) expr.push(k);
-  } else if ('h' <= k && k <= 'j') {
-    o = document.getElementsByClassName('var')[0];
-    if (!o.disabled) expr.push(expr2expression[k]);
+    if (enabled(o)) expr.push(expr2expression[k] || k);
+  } else if ('abcdfglABCDEFGSV'.indexOf(k) >= 0) {
+    o = document.getElementById(expr2expression[k].trim());
+    if (enabled(o)) expr.push(k);
   } else if (k == '+') {
     o = document.getElementById('plus');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == '-') {
     o = document.getElementById('minus');
-    if (!o.disabled) expr.push(o.innerHTML);
+    if (enabled(o)) expr.push(o.innerHTML);
   } else if (k == '.') {
     o = document.getElementById('decpt');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == '(') {
     o = document.getElementById('oparen');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == ')') {
     o = document.getElementById('cparen');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == '^') {
     o = document.getElementById('powup');
-    if (!o.disabled) expr.push(o.innerHTML);
+    if (enabled(o)) expr.push(o.innerHTML);
   } else if (k == '*') {
     o = document.getElementById('times');
-    if (!o.disabled) expr.push(o.innerHTML);
+    if (enabled(o)) expr.push(o.innerHTML);
   } else if (k == '/') {
     o = document.getElementById('divide');
-    if (!o.disabled) expr.push(o.innerHTML);
+    if (enabled(o)) expr.push(o.innerHTML);
   } else if (k == '%') {
     o = document.getElementById('mod');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == '\\') {
     o = document.getElementById('powdn');
-    if (!o.disabled) expr.push(o.innerHTML);
+    if (enabled(o)) expr.push(o.innerHTML);
   } else if (k == '!') {
     o = document.getElementById('bang');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == ',') {
     o = document.getElementById('comma');
-    if (!o.disabled) expr.push(k);
-  } else if (k == 'a') {
-    o = document.getElementById('atan');
-    if (!o.disabled) expr.push(k);
-  } else if (k == 'l') {
-    o = document.getElementById('log');
-    if (!o.disabled) expr.push(k);
+    if (enabled(o)) expr.push(k);
   } else if (k == '_') {
     o = document.getElementById('base');
-    if (!o.disabled) expr.push(k);
-  } else {
-    return;
+    if (enabled(o)) expr.push(k);
   }
   expression.innerHTML = expand(expr);
   parse();
 }
 
 function expand(expr) {    // expand expr for display
-  var i,c,d,x=[];
+  var i,c,x=[];
   for (i=0; i < expr.length; i++) {
     c = expr[i];
-    x.push((d = expr2expression[c]) ? d : c);
+    x.push(expr2expression[c] || c);
   }
   return x.join('');
 }
@@ -304,11 +346,13 @@ var parstate;    /* 0: initial or after unary operator (can't have ^)
 		    4: accumulating digits and . seen
 		    5: . is only "digit"
 		    6: log just happened
-		    7: atan just happened
+		    7: atan or other fcn just happened
+		    8: 1-arg fcn just happened
+		    9: 1-arg macro taking {}
 		 */
-var lastopen = [];    // stack; 0:( or comma, 1:^, 2:log_, 3:atan
+var lastopen = [];    // stack; 0:( or comma, 1:^, 2:log_, 3:atan, 4:1-arg macro
 
-const closure = ')}})';    // closure for lastopen
+const closure = ')}})}';    // closure for lastopen
 
 function parse() {    // parse expression and return in math element as latex string
   /* depending on current value of expression, disable some buttons
@@ -333,12 +377,17 @@ function parse() {    // parse expression and return in math element as latex st
     o = parsetable[c];
     switch (o.id) {
     case 'oparen' :
-      lastopen.push(parstate==7 ? 3 : 0);
+      if (parstate == 9) {
+	c = '{';
+	lastopen.push(4);
+      } else {
+	lastopen.push(parstate == 7 ? 3 : 0);
+      }
       parstate = 0;
       m += c;
       break;
     case 'cparen' :
-      lastopen.pop();
+      if (lastopen.pop() == 4) c = '}';
       parstate = 2;
       m += c;
       break;
@@ -354,7 +403,27 @@ function parse() {    // parse expression and return in math element as latex st
       break;
     case 'atan' :
       parstate = 7;
-      m += '\\atan';
+      m += '\\'+o.id;
+      break;
+    case 'abs' :
+      parstate = 9;
+      m += '\\'+o.id;
+      break;
+    case 'sgn' :
+    case 'exp' :
+    case 'sin' :
+    case 'cos' :
+    case 'tan' :
+    case 'asin' :
+    case 'acos' :
+    case 'sinh' :
+    case 'cosh' :
+    case 'tanh' :
+    case 'asinh' :
+    case 'acosh' :
+    case 'atanh' :
+      parstate = 8;
+      m += '\\'+o.id;
       break;
     case 'log' :
       parstate = 6;
@@ -416,7 +485,8 @@ function setkeys(state) {
       o = exprbuttons[i];
       o.disabled =
 	o.classList.contains('closer') &&
-	(o.id == 'cparen' && last != 0 && last != 3 ||
+	(!lastopen.length ||
+	 o.id == 'cparen' && last && last < 3 ||
 	 o.id == 'powdn' && last != 1 ||
 	 o.id == 'comma' && last != 2 && last != 3) || o.id =='base';
     }
@@ -425,9 +495,10 @@ function setkeys(state) {
     for (i=0; i < exprbuttons.length; i++) {
       o = exprbuttons[i];
       o.disabled =
-	o.id == 'bang' || o.id == 'base' ||
+	o.id == 'base' ||
 	o.classList.contains('closer') &&
-	(o.id == 'cparen' && last != 0 && last != 3 ||
+	(!lastopen.length ||
+	 o.id == 'cparen' && last && last < 3 ||
 	 o.id == 'powdn' && last != 1 ||
 	 o.id == 'comma' && last != 2 && last != 3);
     }
@@ -444,9 +515,10 @@ function setkeys(state) {
     for (i=0; i < exprbuttons.length; i++) {
       o = exprbuttons[i];
       o.disabled =
-	o.id == 'decpt' || o.id == 'bang' || o.id == 'base' ||
+	o.id == 'decpt' || o.id == 'base' ||
 	o.classList.contains('closer') &&
-	(o.id == 'cparen' && last != 0 && last != 3 ||
+	(!lastopen.length ||
+	 o.id == 'cparen' && last && last < 3 ||
 	 o.id == 'powdn' && last != 1 ||
 	 o.id == 'comma' && last != 2 && last != 3);
     }
@@ -463,13 +535,15 @@ function setkeys(state) {
       o.disabled = o.id != 'oparen' && o.id != 'base';
     }
     break;
-  case 7 :    // atan: only ( is legal
+  case 7 :    // atan or other fcn: only ( is legal
+  case 8 :
+  case 9 :
     for (i=0; i < exprbuttons.length; i++) {
       o = exprbuttons[i];
       o.disabled = o.id != 'oparen';
     }
     break;
-  default:
+  default :
     throw new Error('unknown parstate '+state);
   }
 }
@@ -541,6 +615,83 @@ function factor(n,b) {    // factor n into primes up to (but not including) b
   return f;
 }
 
+function factorial(n) {
+  if (n%1) {
+    return Gamma(n+1);
+  }
+  if (n < 0) {
+    return NaN;
+  }
+  if (n > 170) return Infinity;
+  var x = 1;
+  while (n) x*= n--;
+  return x;
+}		      
+
+function sinc(x) {
+  if (!x) return 1;
+  return Math.sin(pi*(x%2))/(pi*x);
+}
+
+var gammacoeffs = [];
+var gamma_a;    // use 20 for 54 bits of precision? 17 works better!
+const gamma = .57721566490153286
+const gamma0n = (pi**2-6*gamma**2)/12/gamma;
+const gamma0d = (pi**2+6*gamma**2)/12/gamma;
+
+function initGamma(a) {
+  // For Spouge approximation
+  gamma_a = a;
+  gammacoeffs.length = 0;
+  var k;
+  gammacoeffs.push(tau**.5);
+  for (k=1; k < a; k++) {
+    gammacoeffs.push((-1)**k*(a-k)**(k-.5)*-Math.exp(a-k)/factorial(k-1));
+  }
+}
+
+function Gamma0(x) {    // calculate Gamma for arg near (but not at) 0
+  return Math.abs(x) < .00007912 ?
+    (1+gamma0n*x)/(1+gamma0d*x)/x :    // near zero approximation is better 
+    1/Gamma(2-x)/sinc(1-x);
+}
+
+function Gamma(x) {
+  var g;
+  var y = x%1;
+  if (x < 1) {
+    if (!y) return NaN;
+    // Gamma(x) = Gamma(x+1)/x
+    if (x > .5) {
+      x--;    // Gamma(x) = Gamma(x-1)*(x-1)
+      return Gamma0(x)*x;
+    } else if (x > -.5) {
+      return Gamma0(x);
+    } else if (y < -.5) {
+      g = Gamma0(++y);
+    } else {
+      g = Gamma0(y);
+    }
+    while (g && y > x) {
+      g /= x++;
+    }
+    return g;
+  }
+  if (x > 172) {
+    return Infinity;
+  }
+  // Spouge approximation
+  var g = gammacoeffs[0];
+  for (k=1; k < gamma_a; k++) {
+    g += gammacoeffs[k]/(y+k);
+  }
+  g *= (y+gamma_a)**(y+.5)*Math.exp(-y-gamma_a);
+  while (--x > 1) {    // Gamma(x) = (x-1)Gamma(x-1)
+    g *= x;
+  }
+  return g;
+}
+
 function atan(y,x) {
   return Math.atan2(y,x==undefined?1:x);
 }
@@ -551,6 +702,7 @@ function blog(b,a) {    // log, but with args reversed
 
 function mod(a,b) {    // mathematical mod function
   // Note: javascript % is in (-|b|,|b|)
+  if (!b) return NaN;
   b = Math.abs(b);
   var f,r,s;
   var p;    // prime factors
@@ -676,6 +828,7 @@ function expr2js(expr) { // convert math expression to javascript expression
 	vars.push('blog(');
 	recur.push(
 	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	js = '';
 	reset();
 	break;
       case 'log' :
@@ -705,8 +858,19 @@ function expr2js(expr) { // convert math expression to javascript expression
 	js = '';
 	reset();
 	break;
-      default:
-	throw new SyntaxError('Unknown token at '+i);
+      default :
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	vars.push('Math.'+c[1]+'(');
+	if ((c=expr[i]) != '(' && c != '{') {
+	  throw new SyntaxError('Improper arg at '+i);
+	}
+	recur.push(
+	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	js = '';
+	reset()
+	break;
       }
       break;
     case ',' :    // first arg of atan
@@ -736,16 +900,17 @@ function expr2js(expr) { // convert math expression to javascript expression
       js = '';
       reset();
       break;
+    case '{' :
     case '(' :
       if (digits.length) {
 	vars.push(digits);
       }
-      recur.push(
+     recur.push(
 	{c:c,js:js,sign:sign,vars:vars,binary:binary});
       js = c;
       reset();
       break;
-    case '}' :    // terminates ^ or _
+    case '}' :    // terminates ^ or _ or \abs
     case ')' :    // terminates (
       if (!recur.length) {
 	throw new SyntaxError('Unmatched '+c+' at position '+i);
@@ -801,10 +966,11 @@ function expr2js(expr) { // convert math expression to javascript expression
       digits += c;
       break;
     case '!':
-      if (!digits.length || digits.indexOf('.') >= 0) {
-	throw new SyntaxError('Illegal factorial');
+      if (digits.length) {
+	vars.push(digits);
+	digits = '';
       }
-      vars.push('factorial('+digits+')');
+      vars.push('factorial('+vars.pop()+')');
       digits = '';
       break;
     case '\u03b8':
@@ -817,7 +983,7 @@ function expr2js(expr) { // convert math expression to javascript expression
     case 'p': case 'q': case 'r': case 's': case 't':
     case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
       if (digits.length) {
-	vars.push(digits)
+	vars.push(digits);
 	digits = '';
       }
       vars.push(c);
@@ -1029,15 +1195,12 @@ function showpopup(o,s) {
 				  (r.top+r.bottom-q.height)/2-b.top))+'px';
 }
 
-function factorial(n) {
-  if (n != Math.floor(n) || n < 0) {
-    throw new RangeError('arg must be nonnegative integer');
-  }
-  if (n > 170) return Infinity;
-  var x = 1;
-  while (n) x*= n--;
-  return x;
-}		      
+function advance(event) {
+  event.stopPropagation();
+  document.querySelectorAll('.ex').forEach(
+    function(e){e.style.display='inline-block';});
+  event.target.parentElement.style.display='none';
+}
 
 /* thoughts:
    Is there a way to do log?
@@ -1086,6 +1249,9 @@ button {
   text-align:center;
   margin:0;
 }
+.ex {
+  display:none;
+}    
 .popup {
   background-color:white;
   display:none;
@@ -1248,10 +1414,22 @@ td {
   text-align:center;
   width:30px;
 }
+span {
+  text-decoration:underline;
+  cursor:context-menu;
+}
 </style>
 </head>
 <body onload='init()'>
 <p class='top'>
+<p class='invisible'>\(\DeclareMathOperator{\sgn}{sgn}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\asin}{asin}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\acos}{acos}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\atan}{atan}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\asinh}{asinh}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\acosh}{acosh}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\atanh}{atanh}\)</p>
+<p class='invisible'>\(\DeclarePairedDelimiters{\abs}{\lvert}{\rvert}\)</p>
   <a href='fib.html'>Fi &amp; Lu</a>&nbsp;
   <a href='area.html'>Area</a>&nbsp;
   <a href='algebra.html'>Algebra</a>
@@ -1281,8 +1459,9 @@ td {
 <button class='var'>y</button>
 <button class='var'>z</button>
 <button id='bs'>Backspace</button>
+<button id='clear'>Clear</button>
 <br>
-<button class='var const'>e</button>
+<button class='var'>e</button>
 <button class='var' title='pi (i)' key='i'>&pi;</button>
 <button class='var' title='tau=2pi (j)' key='j'>&tau;</button>
 <button class='digit'>0</button>
@@ -1305,12 +1484,28 @@ td {
 <button id='mod' class='op binary' title='modulo (%)' key='%'>mod</button>
 <button id='powup' class='op' title='exponentiate (^)' key='^'>&uparrow;</button>
 <button id='powdn' class='op closer' title='end exponent (\)' key='\\'>&downarrow;</button>
+<button id='sgn' class='op' title='signum (S)' key='S'>sgn</button>
+<button id='abs' class='op' title='absolute value (V)' key='V'>abs</button>
 <button id='oparen' class='op' key='('>(</button>
-<button id='comma' class='op closer' title='end base or first arg' key=','>,</button>
 <button id='cparen' class='op closer' key=')'>)</button>
-<button id='log' class='op' title='logarithm (l), default base = e' key='l'>log</button>
-<button id='base' class='op' title='base of log, terminated with comma' key='_'>_</button>
-<button id='atan' class='op' title='arctangent (a), 1 or 2 args' key='a'>atan</button>
+<br>
+<button id='exp' class='op ex' title='exp (E)' key='E'>exp</button>
+<button id='log' class='op ex' title='logarithm (l), default base = e' key='l'>log</button>
+<button id='base' class='op ex' title='base of log, terminated with comma' key='_'>_</button>
+<button id='comma' class='op closer ex' title='end base or first arg' key=','>,</button>
+<button id='sin' class='op ex' title='sine (b)' key='b'>sin</button>
+<button id='cos' class='op ex' title='cosine (c)' key='c'>cos</button>
+<button id='tan' class='op ex' title='tangent (d)' key='d'>tan</button>
+<button id='asin' class='op ex' title='arcsine (f)' key='f'>asin</button>
+<button id='acos' class='op ex' title='arccosine (g)' key='g'>acos</button>
+<button id='atan' class='op ex' title='arctangent (a), 1 or 2 args' key='a'>atan</button>
+<br>
+<button id='sinh' class='op ex' title='hyperbolic sine (B)' key='B'>sinh</button>
+<button id='cosh' class='op ex' title='hyperbolic cosine (C)' key='C'>cosh</button>
+<button id='tanh' class='op ex' title='hyperbolic tangent (D)' key='D'>tanh</button>
+<button id='asinh' class='op ex' title='arg hyperbolic sine (F)' key='F'>asinh</button>
+<button id='acosh' class='op ex' title='arg hyperbolic cosine (G)' key='G'>acosh</button>
+<button id='atanh' class='op ex' title='arg hyperbolic tangent (A)' key='A'>atanh</button>
 </div>
 <div id='exprboxes'>
 <p class='varlabel'>p</p><div id='mathboxp' class='exprbox'></div><button class='up'>PLOT</button>
@@ -1327,7 +1522,6 @@ td {
 </div>
 <button id='debugger' onclick='showhidenext(this)' title='show/hide javascript code for current math expression'>Show</button>
 <p id='debug'></p>  
-<p class='invisible'>\(\DeclareMathOperator{\atan}{atan}\)</p>
 </div>
 <!--Plotting
     We have a canvas for the plot
@@ -1348,8 +1542,8 @@ td {
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
-<table><tbody><tr><td>%</td><td>a</td><td>l</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
-<td>mod</td><td>atan</td><td>log</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
+<table><tbody><tr><td>%</td><td>S</td><td>V</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
+<td>mod</td><td>sgn</td><td>|abs|</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
 <p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes. If any variable is defined using itself, it cannot be used for plotting.</p>
 <p>Depressing a PLOT button plots the mathematical expression to its left:</p>
 <ul>
@@ -1362,11 +1556,14 @@ td {
 <p>Here&rsquo;s an example to try:</p>
 <ul>
 <li>Enter \(1-p^2&divide;2+p^4&divide;4!-p^6&divide;6!+p^8&divide;8!-p^{10}&divide;10!\) and drag it to box \(q\). (Remember, use the &uparrow; button or the ^ key to exponentiate, and the &downarrow; button or \\ key to end the exponent.)</li>
-<li>Clear, then enter \(t\bmod\tau\) and drag it to box \(p\). (Remember, use the mod button or % key for mod, the \(\tau\) button or j key for \(\tau\).)</li>
+<li>Clear, then enter \(t\mod\tau\) and drag it to box \(p\). (Remember, use the mod button or % key for mod, the \(\tau\) button or j key for \(\tau\).)</li>
 <li>Finally, Clear, then enter \(\tau x\) and drag it to box \(t\) and click PLOT at box \(q\).</li>
 <li>After observing the result, Clear, then enter \(5\theta\) and drag it to box \(t\).</li>
 </ul>
 <p>This should give you a flavor of what can be done. <b>Click to hide this popup.</b></p>
+<p><span onclick='advance(event)'>Enable advanced math functions</span>:</p>
+<table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
+<tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
 </div>
 </body>
 </html>
