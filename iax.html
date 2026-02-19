@@ -847,6 +847,10 @@ function dokey(k) {
       expr = [];
     } else if (k == 'Backspace') {
       expr.pop();
+    } else if (k == 'Enter') {
+      parse();    // make sure complete expression
+      create();
+      clear();
     }
   } else if ('0' <= k && k <= '9') {
     expr.push(k);
@@ -1971,7 +1975,7 @@ span {
 <table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
 <tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
 <p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored.</p>
-  <p>Once you&rsquo;ve entered an expression, click &ldquo;Make Box&rdquo; to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. Only one output port can be connected to any input port. Hovering over a port shows its value.</p>
+  <p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. Only one output port can be connected to any input port. Hovering over a port shows its value.</p>
 <p>The plot area has input boxes for minimum and maximum <i>x</i> and <i>y</i> values. Just to its left are special input ports for <i>x</i> and <i>y</i> coordinates. On the left edge of the page, there are three special output ports, labeled <i>t</i>, <i>x</i>, and <i>y</i>. They sweep from &minus;1 to 1, from minimum to maximum <i>x</i>, and from minimum to maximum <i>y</i>, respectively.</p>
 <p>If the special input ports have values, a plot is shown. New plots are triggered whenever a new connection is made or when any coordinate limit is changed.</p>
 <p><b>Click to hide this popup.</b></p></div>
