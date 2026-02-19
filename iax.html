@@ -1,0 +1,1979 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script>
+MathJax = {
+  loader: {
+    load: ['[tex]/mathtools']
+  },
+  tex: {
+    packages: {'[+]':['mathtools']}
+  }
+};
+</script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js">
+</script>
+<script>
+/****************************************************************
+Boxes provide mathematical functions, specified by math expressions.
+The variables name the input ports of the box which has a single output port.
+There are two special boxlike objects:
+A producer of a sequence of values from -1 through 1, incremented by 2^-10;
+the producer, labeled "parameter" has a single output port.
+A consumer of a sequence of value pairs (x and y) that plots the result;
+the consumer, labeled "plot" has two input ports, labeled x and y.
+The plot defaults to x and y range of [-1,1].
+The user enters math expressions and then clicks Make Box.
+The user draws lines to connect output ports to input ports.
+Each input port can be connected to only one output port.
+May want to allow plot to have multiple paired x and y inputs, colored?
+
+****************************************************************/
+const pi = Math.PI;
+const tau = 2*pi;
+const e = Math.E;
+Math.sgn = Math.sign;
+
+const expr2expression = {    // non-identity conversions from internal string
+  'A' : ' atanh',
+  'B' : ' sinh',
+  'C' : ' cosh',
+  'D' : ' tanh',
+  'E' : ' exp',
+  'F' : ' asinh',
+  'G' : ' acosh',
+  'S' : ' sgn',
+  'V' : ' abs',
+  'a' : ' atan',
+  'b' : ' sin',
+  'c' : ' cos',
+  'd' : ' tan',
+  'f' : ' asin',
+  'g' : ' acos',
+  'l' : ' log',
+  'h' : '\u03b8',    // theta
+  'i' : '\u03c0',    // pi
+  'j' : '\u03c4',    // tau
+  '-' : '\u2212',    // minus
+  '*' : '\u00d7',    // times
+  '/' : '\u00f7',    // divide
+  '^' : '\u2191',    // powup
+  '\\': '\u2193',    // powdn
+  '_': '_(',         // base
+  '%' : ' mod '
+};
+
+var expr;          // internal string for math expression
+var expression;    // display string for math expression
+var parsetable;    // dictionary exprchar->buttonelement
+var exprbuttons;   // keys to enter components of math expression
+var vv = {};       // variable -> expression
+
+const greek = {
+  '\u0391':'Alpha','\u0392':'Beta','\u0393':'Gamma','\u0394':'Delta',
+  '\u0395':'Epsilon','\u0396':'Zeta','\u0397':'Eta','\u0398':'Theta',
+  '\u0399':'Iota','\u039a':'Kappa','\u039b':'Lambda','\u039c':'Mu',
+  '\u039d':'Nu','\u039e':'Xi','\u039f':'Omicron','\u03a0':'Pi',
+  '\u03a1':'Rho','\u03a2':'Sigma','\u03a4':'Tau','\u03a5':'Upsilon',
+  '\u03a6':'Phi','\u03a7':'Chi','\u03a8':'Psi','\u03a9':'Omega',
+  '\u03b1':'alpha','\u03b2':'beta','\u03b3':'gamma','\u03b4':'delta',
+  '\u03b5':'epsilon','\u03b6':'zeta','\u03b7':'eta','\u03b8':'theta',
+  '\u03b9':'iota','\u03ba':'kappa','\u03bb':'lambda','\u03bc':'mu',
+  '\u03bd':'nu','\u03be':'xi','\u03bf':'omicron','\u03c0':'pi',
+  '\u03c1':'rho','\u03c2':'sigma','\u03c4':'tau','\u03c5':'upsilon',
+  '\u03c6':'phi','\u03c7':'chi','\u03c8':'psi','\u03c9':'omega'
+};
+
+/****************************************************************
+ idea for new scheme:
+   boxes for constants, variables, numbers, operations; lines for interaction
+   ... converted to math expressions
+   always one output, but possible multiple inputs, e.g. atan, b^x, log_b x
+   ... the last two defaulting b to e
+   ... Sum and Product ?
+   How do we plot?
+    range creates t values, t is mapped to x and y, sequence input to plotbox
+    plotbox has x and y inputs, no outputs
+
+TODO:
+  pulldown menu of "canned" math boxes with precomputed jsexprs
+    all the trig and hyperbolic trig functions, mod, log
+  simple compound boxes with just + - * / ** [no mod, no atan, no log]
+
+  create a box with a given math expression [use code from ia]
+  copy a box
+  convert math expression to javascript [modify code from ia]
+  check for loops--don't allow them?
+  special sum, product, and plot boxes; range boxes?
+  evaluation
+
+  range inputs: lo, hi, increment
+        output: values
+  NOT A STANDALONE; part of sum, product, and plot networks
+  Sum: iteration variable goes to expression network,
+       resulting values are summed to get value of Sum
+  Product: iteration variable goes to expression network,
+       resulting values are multiplied to get value of Product
+  PLOT: iteration variable goes to expression network,
+       resulting <iteration variable, value> pairs are plotted
+    3 variants? <x,y> <y,x> <r,theta>,
+    but perhaps instead <t,x(t),y(t)> ?
+
+Prototype without user input of boxes (use a fixed set). Just adding lines?
+Use dropdown menu for box types? functions, operators (unary, binary)
+Unary ops: -, abs, sgn, floor, ceiling, round?, ! (allow gamma if not integer?)
+Binary ops: +, -, *, /, %, **
+Fcns: trig, invtrig, hyperbolic, invhyp, exp, ln, gamma
+2-variable fcns: log_, atan2
+Use only simple box types and allow user to lasso a set and have the system
+produce a single macro box, figuring out the equation. Might have to assign
+variable (i.e., port) names. Might need to know precedence to avoid parens.
+
+User guide...
+User inputs a math expression, and from it creates a box. The inputs to the
+box are the free variables in the expression, and the output is the value
+of the expression. The box can be moved around the screen.
+The user can draw lines linking any output to any input, but only one
+output can be linked to a given input.
+
+There are special boxes for plotting, Sigma (sum), and Pi (product).
+The Sigma and Pi boxes have range inputs <min, step, max>,
+the step variable output, the sum or product output,
+and one input (the summand or multiplicand).
+The plot may want a step count rather than a step increment (or just omit).
+There may be separate plot boxes for cartesian and polar plots.
+
+Dependency loops: Not that simple, since plot, Sigma, and Pi control
+their inputs with their outputs. Although we could make the range part
+separate. But what about nested Sigma and Pi, where a one iteration
+variable is another's limit?
+Why do we want the range to be part of the boxes?
+
+****************************************************************/
+/****************************************************************
+Use big absolute position canvas with lines positioned within it.
+Boxes are absolute position as well.
+
+Need drag primitive from fixed portion to variable portion which makes copies
+Rather than large collection of box templates, have one of them allow entry of
+math expression, with its variables being the input port labels, and the output
+port labeled with the math expression itself. Might need an expanded version of
+ia.html's input method, perhaps a list of allowable functions?
+If it's just a function name, the input and output ports don't really need to be labeled.
+Constant expressions don't have any input ports.
+Allowable unary ops and functions:
+ - abs sgn floor ceiling round exp expm1 ln ln1p ! [n! = gamma(n+1)] 
+ sin cos tan csc sec cot asin acos atan
+ sinh cosh tanh asinh acosh atanh
+How many of these are not built in to javascript?
+
+Dragging boxes from variable portion just moves things, but deletes if dragged to edge
+
+Constant boxes are like input elements with variable width; can include constant expressions?
+
+A box is an object prototype with a function to draw itself.
+Each box has one or more ports, for inputs and outputs.
+Each box instance has a position (of upper left corner).
+Each box instance has a javascript expression that when eval'ed with the
+ input port values sets output value(s) for the output port.
+Assuming only one output value, box can have a mathjax expression and the
+ output value is just the result of javascript eval.
+
+Lines can be drawn between ports, always from output port to input port.
+Multiple lines can originate from a given output port.
+Only one line can terminate at a given input port.
+Only one line can be drawn between any pair of (input and output) ports.
+Does each output port correspond to a variable name or constant?
+
+Perhaps a range box whose output sweeps a range...
+  with timing input to slow it down for animation?
+Then a summation or product box that accumulates its input
+  (may want averaging option to produce integral)
+Plot box that takes coordinated x and y inputs, or r and theta inputs...
+  and inputs for min and max x and y (which can be dynamic for animation).
+  Plot is contained within plot box. Box can be contracted or expanded by
+  click and drag of bottom or right edge or bottom right corner.
+  Plot stores x,y and/or r,theta pairs in order. How do multiple plots?
+  Plot needs clear button. Should plot automate its limits? If so, when?
+  Even if so, can be overridden by user action.
+May want reset button to start sweep over.
+
+When a box is moved within the variable portion, lines to its ports stay connected.
+
+If we allow loops, that could solve systems of equations?
+
+A plot box could have x,y and r,theta inputs ? Range inputs ?
+
+Is there enough real estate?
+
+Automatically produce equations ? Need to label lines as variables?
+
+The graph of connections must also be represented internally:
+There is a list of boxes.
+Each box is an object with a type and a unique id, and position of upperleft
+and an attribute for each port. Also, a function that computes the values at
+the output ports based on the values at the input ports.
+Each port attribute specifies a connected port (or none).
+Ports are specified by objectid and port label.
+A port is either an input port or an output port.
+A line is a 2-element array: [outputport,inputport]
+Do we allow lines not to be straight? Do we allow color for UI friendliness?
+
+Is it OK for boxes to overlap? Lines? Could get confusing.
+
+Box types:
+constant
+random ??
+binaryops/fcns:
+  + - * /
+  ^[first arg defaults to e]
+  log_[first arg defaults to e]
+  atan[second arg defaults to 1]
+  mod
+  min/max [two outputs]
+  = >
+unary ops/fcns:
+  ~ - sgn abs ! sin cos [tan cot sec csc] [asin acos] sinh cosh [tanh coth sech csch] atanh? [asin acosh]
+  exp expm1 ln ln1p
+  floor ceiling 
+range ports:
+  start increment end speed?
+sum (accumulate) and product (accumulate)
+  initialvalue (defaults to 0 or 1, repsectively), input, output, reset
+plot ports
+  minx, maxx, miny, maxy, x, y [NOTE: must store all x,y points until reset
+  reset
+
+How do we evaluate output ports?
+Repeat:  Find boxes whose outputs are not all defined and all of whose inputs are defined,
+         and compute their outputs
+until no such boxes are found.
+If there are still boxes whose outputs are not all defined ?
+
+Have a box that includes an expression as created by ia.html; input ports are automatically
+created for each variable. The one output port is the value of the expression.
+
+****************************************************************/
+
+var body;       // #body
+var boxesdiv;   // #boxes
+var cvs;        // #canvas
+var ctx;        // canvas context
+var boxes = [];      // list of boxes
+const lines = new Set();      // set of lines
+var valueobj;
+var pcv;
+var pcx;
+const side = 513;
+
+function init(o) {    // initialize the world
+  body = o;
+  mstate = 0;
+  o.addEventListener('pointerdown',mdnhandler);
+  o.addEventListener('pointermove',mmvhandler);
+  o.addEventListener('pointerup',muphandler);
+  o.addEventListener('pointerleave',mlvhandler);
+  o.addEventListener('pointerenter',menhandler);
+  o.addEventListener('pointerover',movhandler);
+  objects = [];
+  valueobj = document.getElementById('value');
+  cvs = document.getElementById('canvas');
+  ctx = cvs.getContext('2d');
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'black';
+  boxesdiv = document.getElementById('boxes');
+  // initialize object list with prototypes
+  // initialize handlers
+  drawlines();
+  /**************** from ia.html ****************/
+  expr = [];
+  expression = document.getElementById('expression');
+  expression.innerHTML = '';
+  parsetable = {};
+  exprbuttons = [];
+  document.body.addEventListener('paste',paste);
+  document.body.addEventListener('keydown',algkey);
+  document.getElementById('create').addEventListener('click',create);
+  var i;
+  var b,c;
+  b = document.getElementById('exprbuttons').children;
+  for (i=0; i < b.length; i++) {
+    if (b[i].id == 'bs') {
+      b[i].addEventListener('click',bs);
+    } else if (b[i].id == 'clear') {
+      b[i].addEventListener('click',clear);
+    } else {
+      b[i].addEventListener('click',bp);
+      c = b[i].innerHTML;
+      parsetable[c.length == 1 ? c : b[i].getAttribute('key')] = b[i];
+      exprbuttons.push(b[i]);
+    }
+  }
+  parse();
+  MathJax.startup.output.options.linebreaks.inline = false;
+  initGamma(17);    // seems to produce best precision
+  initplot();
+}
+
+var portt;    // parameter t (output) port
+var portx;    // x (output) port
+var porty;    // y (output) port		
+var xport;    // x (input) port
+var yport;    // y (input) port
+
+function initplot() {
+  pcv = document.getElementById('plotarea');
+  pcv.width = side;
+  pcv.height = side;
+  pcx = pcv.getContext('2d');
+  pcx.lineWidth = 1;
+  pcx.lineCap = 'round';
+  pcx.lineJoin = 'round';
+  pcx.strokeStyle = 'black';
+  document.getElementById('bot').value = -1;
+  document.getElementById('top').value = 1;
+  document.getElementById('lft').value = -1;
+  document.getElementById('rgt').value = 1;  
+  b = document.getElementsByTagName('input');
+  for (i=0; i < b.length; i++) {
+    b[i].step=.125;
+    b[i].addEventListener('change',updateLimits);
+  }
+  portt = pseudoport(0,400,'t');
+  portx = pseudoport(0,440,'x');
+  porty = pseudoport(0,480,'y');
+  var box = new Box(500,400,'xy');
+  boxes.pop();
+  MathJax.typesetClear([box.element]);
+  box.element.className = 'pseudobox';
+  box.element.style.width = '.5em';
+  box.element.querySelectorAll(':not(.port)').forEach(
+    function (child) {child.remove();});
+  xport = box.iports[0];
+  yport = box.iports[1];
+}
+
+function pseudoport(x,y,label) {
+  const box = new Box(x,y);  
+  var port = box.oport = new Port(box,0,0,label);
+  port.element.style.fontStyle = 'italic';
+  return port;
+}
+
+function updateLimits(event) {
+  plot();
+}
+
+function clean(port) {    // remove any line going to this input port
+  const i = port.jsobject;
+  if (i.value != defaultoport) {
+    for (const l of lines) {
+      if (l.iport == i) {
+	lines.delete(l);
+	i.value = defaultoport;
+	drawlines();
+	break;
+      }
+    }
+    evaluate();
+    valueobj.innerHTML = i.value.value;
+  }
+}
+
+/*
+   For box, mouse is used to drag
+   For port, mouse is used to draw line on canvas; line translucent
+   For text in box, click input element
+*/
+
+/****************************************************************
+Mouse/touch handlers
+
+Handlers need to be attached to <body> !!  event.target specifies what was hit
+
+Actions:
+  move box (mdn, mmv, mup), on body of box
+  draw line (mdn, mmv, mup), on port to port of opposite gender,
+     but will mlv source port and possible move over various objects
+     before arriving at destination.
+
+****************************************************************/
+
+/* state of mouse actions:
+   0: inactive
+   1: moving box
+   2: drawing line from i
+   3: drawing line from o
+*/
+var mstate;
+
+var x0;    // start x of line, or offset position within moving box on mdown
+var y0;    // start y of line, or offset position within moving box on mdownn
+var mobj;  // source port, or moving box
+
+function getCoords(o) {
+  var rect = o.getBoundingClientRect();
+  var sx = window.pageXOffset;
+  var sy = window.pageYOffset;
+  return {y: rect.y+sy, x: rect.x+sx};
+}
+
+function getCenterLeft(o) {
+  var rect = o.getBoundingClientRect();
+  var sx = window.pageXOffset;
+  var sy = window.pageYOffset;
+  return {y: (rect.top+rect.bottom)/2+sy, x: rect.left+sx};
+}
+
+function getCenterRight(o) {
+  var rect = o.getBoundingClientRect();
+  var sx = window.pageXOffset;
+  var sy = window.pageYOffset;
+  return {y: (rect.top+rect.bottom)/2+sy, x: rect.right+sx};
+}
+
+function mdnhandler(e) {    // mouse down (touchstart)
+  var target = e.target;
+  var tc = target.classList;
+  if (tc.contains('port')) {    // input port
+    e.preventDefault();
+    mstate = 2;
+    var xy = getCenterLeft(target);
+    x0 = xy.x;
+    y0 = xy.y;
+    clean(target);      // remove previous line ending at this port
+  } else if (tc.contains('mport')) {    // output port
+    e.preventDefault();
+    mstate = 3;
+    var xy = getCenterRight(target);
+    x0 = xy.x;
+    y0 = xy.y;
+  } else if (tc.contains('box')) {
+    e.preventDefault();
+    mstate = 1;
+    var xy = getCoords(target);
+    x0 = xy.x-e.pageX;
+    y0 = xy.y-e.pageY;
+  }
+  mobj = target;
+}
+
+function mmvhandler(e) {    // mouse move (touchmove)
+  // target is irrelevant; moving mbox or drawing line
+  switch(mstate) {
+  case 1: // moving box
+    e.preventDefault();
+    const x = e.pageX+x0;
+    const y = e.pageY+y0;
+    if (x < 0 || y < 0) {
+      mobj.jsobject.delete();
+      mobj = undefined;
+      mstate = 0;
+    } else {
+      mobj.style.left = x+'px';
+      mobj.style.top = y+'px';
+      drawlines();
+    }
+    break;
+  case 2:  // drawing line
+  case 3:
+    e.preventDefault();
+    drawlines();
+    ctx.beginPath();
+    ctx.moveTo(x0,y0);
+    ctx.lineTo(e.pageX,e.pageY);
+    ctx.stroke();
+  }  
+}
+
+function addline(oport,iport) {
+  const o = oport.jsobject;
+  const i = iport.jsobject;
+  if (i.value != defaultoport) {
+    for (const l of lines) {
+      if (l.iport == i) {
+	lines.delete(l);
+	break;
+      }
+    }
+  }
+  lines.add(new Line(o,i));
+  i.value = o;
+  plot();
+  valueobj.innerHTML = o.value;
+}
+
+function muphandler(e) {    // mouse up (touchend)
+  var target = e.target;  // target is relevant only if drawing line port->port
+  var tc = target.classList;
+  switch (mstate) {
+  case 1: // was moving box
+    e.preventDefault();
+    break;
+  case 2:
+    e.preventDefault();
+    if (tc.contains('mport')) {
+      addline(target,mobj);
+    }
+    drawlines();
+    break;
+  case 3:
+    e.preventDefault();
+    if (tc.contains('port')) {
+      addline(mobj,target);
+    }
+    drawlines();
+    break;
+  }
+  mstate = 0;
+}
+
+function mouhandler(e) {    // mouse out (touchcancel?)
+  // shouldn't happen?
+  if (mstate) {
+    e.preventDefault();
+    mstate = 0;
+  }
+}
+
+function mlvhandler(e) {    // mouse leave
+  // shouldn't happen?
+  if (mstate) {
+    e.preventDefault();
+    mstate = 0;
+  }
+}
+
+function menhandler(e) {    // mouse enter
+  // shouldn't happen?
+  if (mstate) {
+    e.preventDefault();
+    mstate = 0;
+  }
+}
+
+function movhandler(e) {    // mouse over (if a line, show value on that line)
+  // if target is port of opposite gender to mobj, snap line
+  // if no mobj and on a line (must check nearby canvas pixels) show value of line
+  // var pix = ctx.getImageData(x,y,width,height).data;  
+  // but which line is it?
+  // assuming lines are straight lines, we can instead loop through lines
+  // distance to each line is not hard to compute
+  var target = e.target;
+  var tc = target.classList;
+  var v;
+  if (tc.contains('mport')) {
+    valueobj.innerHTML = target.jsobject.value;
+  } else if (tc.contains('port')) {
+    valueobj.innerHTML = target.jsobject.value.value;
+  }  
+}
+
+function loopcheck() {    // check for dependency loop
+  // create dependency (directed) graph and check for loops
+  // each box is a vertex in the graph
+  // each line is an edge from output port to input port, so box to box
+  // each box is immediately dependent on a set of boxes
+}
+
+const symbol = /\\[A-Za-z]+[A-Za-z0-9]*/;
+const number = /(\d+\.?\d*|\d*\.?\d+)/;
+const operator = /[-+/*^_!\u00d7\u00f7]/;
+const paren = /[\[\]\(\)\{\}]/;
+const variable = /[A-Za-z\u0391-\u03a9\u03b1-\u03c9]/;    //Roman & Greek
+const constant = /[e\u03c0\u03c4]/;    // e, pi, tau
+
+const token = new RegExp([symbol,number,operator,paren,variable].map(
+  function(r){return r.source;}).join('|'),'g');
+
+function tokenize(m) {
+  /* given latex expression, return list of tokens...
+  *  tokens are names starting with \  or
+  *  single character variables  or
+  *  numbers (string of digits with optional .)  or
+  *  operators: +-*^/_|&!  or
+  *  parens {}()[] 
+  */
+  return m.match(token) || [];
+}
+
+function variables(m) {
+  var a = tokenize(m);
+  var s = new Set();    // s.size is length
+  var i;
+  for (i = 0; i < a.length; i++) {
+    if (a[i].length == 1 && variable.exec(a[i]) && !constant.exec(a[i])) {
+      s.add(a[i]);
+    }
+  }
+  return Array.from(s).sort();
+}
+
+function plot() {
+  const x0 = document.getElementById('lft').valueAsNumber;
+  const x1 = document.getElementById('rgt').valueAsNumber;  
+  const y0 = document.getElementById('bot').valueAsNumber;
+  const y1 = document.getElementById('top').valueAsNumber;  
+  var t;
+  var i,j;
+  var oi,oj;    // old values to decide between moveTo and lineTo
+  var d;    // distance between old and new points
+  var x,y;
+  if (!(x0<x1 && y0<y1)) throw new Error('Low Limits Must Be Less Than High Limits');
+  pcx.clearRect(0,0,side,side);
+  pcx.strokeStyle='gray';
+  if (x0 < 0 && 0 < x1) {
+    pcx.beginPath();
+    pcx.moveTo((1-side)*x0/(x1-x0),0);
+    pcx.lineTo((1-side)*x0/(x1-x0),side);
+    pcx.stroke();
+  }
+  if (y0 < 0 && 0 < y1) {
+    pcx.beginPath();
+    pcx.moveTo(0,(side-1)*y1/(y1-y0));
+    pcx.lineTo(side,(side-1)*y1/(y1-y0));
+    pcx.stroke();
+  }
+  pcx.strokeStyle='black';
+  pcx.beginPath();
+  for (t = -1; t <= 1; t += 2**-10) {
+    portt.value = t;
+    portx.value = (x0*(1-t) + x1*(1+t))/2;
+    porty.value = (y0*(1-t) + y1*(1+t))/2;
+    evaluate();
+    x = xport.value.value;
+    y = yport.value.value;
+    i = (side-1)*(x-x0)/(x1-x0);
+    j = (side-1)*(y1-y)/(y1-y0);
+    if (t==-1 || Math.sqrt((i-oi)**2+(j-oj)**2) > 5) {
+      pcx.moveTo(i,j);
+    } else {
+      pcx.lineTo(i,j);
+    }
+    oi = i;
+    oj = j;
+  }
+  pcx.stroke();
+}
+
+function ev(js) {
+  return eval(js);    // as a fcn to avoid overwriting variables
+}
+
+function evaluate() {    // reevaluate boxes (except for constants)
+  var doneboxes = [];    // evaluated boxes
+  var i,j,v;
+  var js;
+  var box;
+  for (i = boxes.length; i--;) {
+    box = boxes[i];
+    if (box.iports.length) box.oport.value = undefined;
+  }
+  while (boxes.length) {
+    var p = 0;
+    for (i = boxes.length; i--;) {
+      box = boxes.pop();
+      js = box.js;
+      if (box.oport.value == undefined) {
+	var iports = box.iports;
+	for (j = 0; j < iports.length; j++) {
+	  if ((v = iports[j].value.value) == undefined) {
+	    js = '';
+	    break;
+	  }
+	  var l = iports[j].label;
+	  js = (greek[l] || l) + '=' + v + ';' + js;
+	}
+	if (js) {
+	  box.oport.value = ev(js);
+	  doneboxes.push(box);
+	  p++;
+	} else {
+	  boxes.unshift(box);
+	}
+      } else {
+	doneboxes.push(box);
+	p++;
+      }
+    }
+    if (!p) break;    // didn't make progress
+  }
+  Array.prototype.push.apply(boxes,doneboxes);
+}
+
+function drawlines() {    // redraw lines
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  cvs.width = W;
+  cvs.height = H;
+  for (const l of lines) {
+    l.display();
+  }
+}
+
+function Line(oport,iport) {
+  this.iport = iport;    // input port (destination)
+  this.oport = oport;    // output port (source)
+  lines.add(this);
+}
+
+Line.prototype.display = function () {
+  var xyi = getCenterLeft(this.iport.element);
+  var xyo = getCenterRight(this.oport.element);
+  ctx.beginPath();
+  ctx.moveTo(xyo.x,xyo.y);
+  ctx.lineTo(xyi.x,xyi.y);
+  ctx.stroke();
+}
+
+function Port(box,x,y,name,value) {
+  this.box = box || null;	// Box containing this port
+  this.x = x || 0;		// x position of port relative to its box
+  this.y = y || 0;		// y position of port relative to its box
+  this.label = name || '';	// port label
+  this.value = value;		// if an output port, its value (initially undefined)
+				// if an input port, the corresponding output port
+				//  or the default output port if not connected
+  if (box) {
+    var e = box.element;
+    var p = this.element = document.createElement('p');
+    if (value) {
+      p.className = 'port';
+      p.innerHTML = name;
+      p.style.left = x+'px';
+      p.style.top = y+'px';
+    } else {
+      p.className = 'mport';
+      p.innerHTML = name || '\u27a4';
+      p.style.right = x+'px';
+      p.style.top = y+'px';
+    }
+    p.jsobject = this;
+    e.appendChild(p);
+  }
+}
+
+Port.prototype.delete = function () {    // called only from box.delete()
+  const e = this.element;
+  for (const l of lines) {
+    if (l.iport == this || l.oport == this) {
+      lines.delete(l);
+    }
+  }
+  e || e.remove();
+}
+
+defaultoport = new Port();
+const portheight = 20;
+
+function Box(x,y,math) {
+  const e = this.element = document.createElement('div');
+  e.className = math ? 'box' : 'pseudobox';
+  e.style.left = (this.x = (x || 0))+'px';
+  e.style.top = (this.y = (y || 0))+'px';
+  boxesdiv.appendChild(e);
+  if (math) {
+    e.innerHTML = "<p class='math'>\\("+math+"\\)</p>"
+    MathJax.typeset([e]);
+    var v = variables(math);    // input port names
+    var h = portheight*Math.max(1,v.length);
+    e.style.height = h+10+'px';
+    this.oport = new Port(this,0,h/2-24);	// output port
+    this.iports = [];		// input ports
+    this.js = expr2js(math);	// function that maps inputs to output
+    if (!v.length) this.oport.value = eval(this.js)
+    // need to figure out what input ports and output port are
+    var i;
+    for (i = 0; i < v.length; i++) {
+      var p = new Port(this,0,portheight*i-13,v[i],defaultoport);
+      this.iports.push(p);
+    }
+    e.jsobject = this;
+    boxes.push(this);
+  }
+}
+
+Box.prototype.moveTo = function (x,y) {
+  this.element.style.left = (this.x = x)+'px';
+  this.element.style.top = (this.y = y)+'px';
+  drawlines();
+}
+
+Box.prototype.delete = function() {
+  var p;
+  while (p = this.iports.pop()) {
+    p.delete();
+  }
+  this.oport.delete();
+  this.element.remove();
+  boxes.splice(boxes.indexOf(this),1);
+  drawlines();
+}
+
+/****************************************************************/
+
+function enabled(o) {
+  return (!o.disabled && o.offsetWidth);
+}
+
+function paste(event) {
+  if (event.target.tagName == 'INPUT') return;
+  const text = event.clipboardData.getData('Text/plain');
+  event.preventDefault();
+  clear();
+  for (i = 0; i < text.length; i++) {
+    try {
+      dokey(text[i]);
+    } catch(error) {
+    }
+  }
+}
+
+function algkey(event) {    // key down
+  if (event.target.tagName == 'INPUT') return;
+  if (event.ctrlKey || event.metaKey) return;
+  event.preventDefault();
+  dokey(event.key);
+}
+
+function dokey(k) {
+  var o;
+  if (k.length > 1) {
+    if (k == 'Delete') {
+      expr = [];
+    } else if (k == 'Backspace') {
+      expr.pop();
+    }
+  } else if ('0' <= k && k <= '9') {
+    expr.push(k);
+  } else if ('ehijpqrstuvwxyz'.indexOf(k) >= 0) {
+    o = document.getElementsByClassName('var')[0];
+    if (enabled(o)) expr.push(expr2expression[k] || k);
+  } else if ('abcdfglABCDEFGSV'.indexOf(k) >= 0) {
+    o = document.getElementById(expr2expression[k].trim());
+    if (enabled(o)) expr.push(k);
+  } else if (k == '+') {
+    o = document.getElementById('plus');
+    if (enabled(o)) expr.push(k);
+  } else if (k == '-') {
+    o = document.getElementById('minus');
+    if (enabled(o)) expr.push(o.innerHTML);
+  } else if (k == '.') {
+    o = document.getElementById('decpt');
+    if (enabled(o)) expr.push(k);
+  } else if (k == '(') {
+    o = document.getElementById('oparen');
+    if (enabled(o)) expr.push(k);
+  } else if (k == ')') {
+    o = document.getElementById('cparen');
+    if (enabled(o)) expr.push(k);
+  } else if (k == '^') {
+    o = document.getElementById('powup');
+    if (enabled(o)) expr.push(o.innerHTML);
+  } else if (k == '*') {
+    o = document.getElementById('times');
+    if (enabled(o)) expr.push(o.innerHTML);
+  } else if (k == '/') {
+    o = document.getElementById('divide');
+    if (enabled(o)) expr.push(o.innerHTML);
+  } else if (k == '%') {
+    o = document.getElementById('mod');
+    if (enabled(o)) expr.push(k);
+  } else if (k == '\\') {
+    o = document.getElementById('powdn');
+    if (enabled(o)) expr.push(o.innerHTML);
+  } else if (k == '!') {
+    o = document.getElementById('bang');
+    if (enabled(o)) expr.push(k);
+  } else if (k == ',') {
+    o = document.getElementById('comma');
+    if (enabled(o)) expr.push(k);
+  } else if (k == '_') {
+    o = document.getElementById('base');
+    if (enabled(o)) expr.push(k);
+  }
+  expression.innerHTML = expand(expr);
+  parse();
+}
+
+function expand(expr) {    // expand expr for display
+  var i,c,x=[];
+  for (i=0; i < expr.length; i++) {
+    c = expr[i];
+    x.push(expr2expression[c] || c);
+  }
+  return x.join('');
+}
+
+function create(event) {    // create pressed
+  const m = MathJax.startup.document.getMathItemsWithin([document.getElementById('math')])[0].math;
+  new Box(200,200,m);
+}
+
+function clear(event) {    // clear pressed
+  expr = [];
+  expression.innerHTML = '';
+  parse();
+}
+
+function bs(event) {    // backspace pressed
+  expr.pop();
+  expression.innerHTML = expand(expr);
+  parse();
+}
+
+function bp(event) {    // button pressed
+  const o = event.target;
+  var c = o.innerHTML;
+  expr.push(c.length == 1 ? c : o.getAttribute('key'));
+  expression.innerHTML = expand(expr);
+  parse();
+}
+
+var parstate;    /* 0: initial or after unary operator (can't have ^)
+		    1: accumulating digits
+		    2: accumulating variables
+		    3: need binary argument
+		    4: accumulating digits and . seen
+		    5: . is only "digit"
+		    6: log just happened
+		    7: atan or other fcn just happened
+		    8: 1-arg fcn just happened
+		    9: 1-arg macro taking {}
+		 */
+var lastopen = [];    // stack; 0:( or comma, 1:^, 2:log_, 3:atan, 4:1-arg macro
+
+const closure = ')}})}';    // closure for lastopen
+
+function parse() {    // parse expression and return in math element as latex string
+  /* depending on current value of expression, disable some buttons
+     times, divide, and power can only follow a digit or variable
+     digits cannot follow variables
+     but + and - can be unary and so can follow any operations
+     ) is only enabled when there is a matching ( on the same power level
+     v is only enabled when the parens match within the power level
+     Should we render divide as a fraction, and group multiplications
+     in both the numerator and denominator, making / have lower precedence?
+  */
+  var i;
+  var c,o;
+  var s = expr;
+  var m = '\\(';    // math string
+  o = document.getElementById('exprdiv');
+  if (o.scrollWidth > o.clientWidth) o.scrollLeft = o.scrollWidth-o.clientWidth;
+  parstate = 0;
+  lastopen.length = 0;
+  for (i = 0; i < s.length; i++) {
+    c = s[i];
+    o = parsetable[c];
+    if (!o) continue;    // ignore unknown characters, e.g. spaces
+    switch (o.id) {
+    case 'oparen' :
+      if (parstate == 9) {
+	c = '{';
+	lastopen.push(4);
+      } else {
+	lastopen.push(parstate == 7 ? 3 : 0);
+      }
+      parstate = 0;
+      m += c;
+      break;
+    case 'cparen' :
+      if (lastopen.pop() == 4) c = '}';
+      parstate = 2;
+      m += c;
+      break;
+    case 'powup' :
+      parstate = 0;
+      lastopen.push(1);
+      m += '^{'
+      break;
+    case 'powdn' :
+      lastopen.pop();
+      parstate = 2;
+      m += '}';
+      break;
+    case 'atan' :
+      parstate = 7;
+      m += '\\'+o.id;
+      break;
+    case 'abs' :
+      parstate = 9;
+      m += '\\'+o.id;
+      break;
+    case 'sgn' :
+    case 'exp' :
+    case 'sin' :
+    case 'cos' :
+    case 'tan' :
+    case 'asin' :
+    case 'acos' :
+    case 'sinh' :
+    case 'cosh' :
+    case 'tanh' :
+    case 'asinh' :
+    case 'acosh' :
+    case 'atanh' :
+      parstate = 8;
+      m += '\\'+o.id;
+      break;
+    case 'log' :
+      parstate = 6;
+      m += '\\log';
+      break;
+    case 'base' :
+      lastopen.push(2);
+      parstate = 0;
+      m += '_{'
+      break;
+    case 'comma' :
+      m += lastopen[lastopen.length-1] == 2 ? '}(' : ',';
+      lastopen[lastopen.length-1] = 0;
+      parstate = 0;
+      break;
+    case 'minus' :
+      c = '-';
+    default :
+      if (c == '%') c = '\\bmod ';
+      m += c;
+      if (c == '.') {
+	parstate = parstate == 1 ? 4 : 5;
+      } else {
+	parstate = !o.classList.contains('binary') ?
+	  (!o.classList.contains('op') ?
+	   (!o.classList.contains('digit') ? 2 : parstate < 4 ? 1 : 4) :
+	   (parstate ? 3 : 0)) : 3;
+      }
+    }
+  }
+  setkeys(parstate);
+  while ((i = lastopen.pop()) != undefined) m += closure[i];
+  m += '\\)';
+  document.getElementById('debug').innerHTML = expr2js(m.slice(2,-2));
+  MathJax.typesetClear([document.getElementById('mathbox')]);
+  document.getElementById('math').innerHTML = m;
+  MathJax.typeset(['#math']);
+  o = document.getElementById('mathbox');
+  if (o.scrollWidth > o.clientWidth) o.scrollLeft = o.scrollWidth-o.clientWidth;
+}
+
+function setkeys(state) {
+  /* enable and disable keys as appropriate for the state
+  */
+  const last = lastopen[lastopen.length-1];
+  var i;
+  var o;
+  switch (state) {
+  case 0 :    // start of subexpression
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled =
+	o.classList.contains('binary') || o.id.indexOf('pow') >= 0 ||
+	o.id == 'cparen' || o.id == 'bang' || o.id == 'base' || o.id == 'comma';
+    }
+    break;
+  case 1 :    // sequence of digits seen
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled =
+	o.classList.contains('closer') &&
+	(!lastopen.length ||
+	 o.id == 'cparen' && last && last < 3 ||
+	 o.id == 'powdn' && last != 1 ||
+	 o.id == 'comma' && last != 2 && last != 3) || o.id =='base';
+    }
+    break;
+  case 2 :    // variable or parenthesized expression seen
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled =
+	o.id == 'base' ||
+	o.classList.contains('closer') &&
+	(!lastopen.length ||
+	 o.id == 'cparen' && last && last < 3 ||
+	 o.id == 'powdn' && last != 1 ||
+	 o.id == 'comma' && last != 2 && last != 3);
+    }
+    break;
+  case 3 :    // need argument
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled =
+	o.classList.contains('closer') || o.id == 'powup' ||
+	o.id == 'bang' || o.id == 'base' || o.classList.contains('binary');
+    }
+    break;
+  case 4 :    // a decimal point has been seen
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled =
+	o.id == 'decpt' || o.id == 'base' ||
+	o.classList.contains('closer') &&
+	(!lastopen.length ||
+	 o.id == 'cparen' && last && last < 3 ||
+	 o.id == 'powdn' && last != 1 ||
+	 o.id == 'comma' && last != 2 && last != 3);
+    }
+    break;
+  case 5 :    // a lone decimal point
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled = !o.classList.contains('digit');
+    }
+    break;
+  case 6 :    // log: only _ and ( are legal
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled = o.id != 'oparen' && o.id != 'base';
+    }
+    break;
+  case 7 :    // atan or other fcn: only ( is legal
+  case 8 :
+  case 9 :
+    for (i=0; i < exprbuttons.length; i++) {
+      o = exprbuttons[i];
+      o.disabled = o.id != 'oparen';
+    }
+    break;
+  default :
+    throw new Error('unknown parstate '+state);
+  }
+}
+
+function rational(a) {    // convert a to rational: [numerator,denominator]
+  if (!Number.isFinite(a)) return [a==a && Math.sign(a) || 0,0];
+  if (Number.isInteger(a)) return [a,1];
+  var b = Math.abs(a);
+  var x = b;
+  var m0=0, m1=1, n0=1, n1=0;
+  var t0,t1;
+  var i, c, ix, fx;
+  for (i = 64; i--;) {
+    ix = Math.floor(x);
+    fx = x%1;
+    t0 = n0;
+    t1 = n1;
+    n0 = m0 + ix*n0;
+    n1 = m1 + ix*n1;
+    m0 = t0;
+    m1 = t1;
+    if (fx == 0 || n0/n1 == b) break;
+    x = 1/fx;
+    if (!Number.isFinite(x)) break;
+  }
+  return [Math.sign(a)*n0,n1];
+}
+
+function xgcd(a,b) {    // extended gcd: return [g,u,v] where g=ua+vb
+  var c=1, d=0, e=0, f=1;
+  var g,h;
+  var q,r;
+  while (b) {
+    q = Math.floor(a/b);
+    r = a - q*b;
+    g = e;
+    h = f;
+    e = c-q*e;
+    f = d-q*f;
+    c = g;
+    d = h;
+    a = b;
+    b = r;
+  }
+  return a ? a < 0 ? [-a,-c,-d] : [a,c,d] : [0,0,0];
+}
+
+function factor(n,b) {    // factor n into primes up to (but not including) b
+  if (!Number.isInteger || n < 1) {
+    throw new TypeError('Only positive integers can be factored');
+  }
+  var f = {};
+  if (n == 1) return f;
+  if (b <= 2) return {n:1};
+  var p = 2;
+  while (!(n&1)) {
+    f[p] = (f[p] || 0) + 1;
+    n >>= 1;
+  }
+  if (n == 1) return f;
+  for (p = 1; (p+=2) < b; ) {
+    while (!(n%p)) {
+      f[p] = (f[p] || 0) + 1;
+      n /= p;
+    }
+    if (n == 1) return f;
+  }
+  f[n] = 1;
+  return f;
+}
+
+function factorial(n) {
+  if (n%1) {
+    return Gamma(n+1);
+  }
+  if (n < 0) {
+    return NaN;
+  }
+  if (n > 170) return Infinity;
+  var x = 1;
+  while (n) x*= n--;
+  return x;
+}		      
+
+function sinc(x) {
+  if (!x) return 1;
+  return Math.sin(pi*(x%2))/(pi*x);
+}
+
+var gammacoeffs = [];
+var gamma_a;    // use 20 for 54 bits of precision? 17 works better!
+const gamma = .57721566490153286
+const gamma0n = (pi**2-6*gamma**2)/12/gamma;
+const gamma0d = (pi**2+6*gamma**2)/12/gamma;
+
+function initGamma(a) {
+  // For Spouge approximation
+  gamma_a = a;
+  gammacoeffs.length = 0;
+  var k;
+  gammacoeffs.push(tau**.5);
+  for (k=1; k < a; k++) {
+    gammacoeffs.push((-1)**k*(a-k)**(k-.5)*-Math.exp(a-k)/factorial(k-1));
+  }
+}
+
+function Gamma0(x) {    // calculate Gamma for arg near (but not at) 0
+  return Math.abs(x) < .00007912 ?
+    (1+gamma0n*x)/(1+gamma0d*x)/x :    // near zero approximation is better 
+    1/Gamma(2-x)/sinc(1-x);
+}
+
+function Gamma(x) {
+  var g;
+  var y = x%1;
+  if (x < 1) {
+    if (!y) return NaN;
+    // Gamma(x) = Gamma(x+1)/x
+    if (x > .5) {
+      x--;    // Gamma(x) = Gamma(x-1)*(x-1)
+      return Gamma0(x)*x;
+    } else if (x > -.5) {
+      return Gamma0(x);
+    } else if (y < -.5) {
+      g = Gamma0(++y);
+    } else {
+      g = Gamma0(y);
+    }
+    while (g && y > x) {
+      g /= x++;
+    }
+    return g;
+  }
+  if (x > 172) {
+    return Infinity;
+  }
+  // Spouge approximation
+  var g = gammacoeffs[0];
+  for (k=1; k < gamma_a; k++) {
+    g += gammacoeffs[k]/(y+k);
+  }
+  g *= (y+gamma_a)**(y+.5)*Math.exp(-y-gamma_a);
+  while (--x > 1) {    // Gamma(x) = (x-1)Gamma(x-1)
+    g *= x;
+  }
+  return g;
+}
+
+function atan(y,x) {
+  return Math.atan2(y,x==undefined?1:x);
+}
+
+function blog(b,a) {    // log, but with args reversed
+  return Math.log(a)/Math.log(b);
+}
+
+function mod(a,b) {    // mathematical mod function
+  // Note: javascript % is in (-|b|,|b|)
+  if (!b) return NaN;
+  b = Math.abs(b);
+  var f,r,s;
+  var p;    // prime factors
+  if (Number.isInteger(b)) {   // integer modulus: value in [0,|b|).
+    if (!Number.isInteger(a) && b != 1) {
+      r = rational(a);
+      f = factor(r[1],b);
+      var x=r[0];
+      for (p in f) {
+	if (p >= b) {
+	  x = 0;
+	  break;
+	}
+	s = xgcd(p,b);
+	if (s[0] != 1) {
+	  x = 0;
+	  break;
+	}
+	x *= s[1]**f[p];
+      }
+      if (x) return mod(x,b);
+    }
+    r = a%b;
+    return r < 0 ? r + b : Math.abs(r);    // don't want -0
+  } else {                     // noninteger modulus: value in (-b/2,b/2]
+    r = a%b;
+    return r > b/2 ? r-b : r <= -b/2 ? r+b : r;
+  }
+}
+
+function expr2js(expr) { // convert math expression to javascript expression
+  /* Until converted into a string, signs, digits, and variables are accumulated
+     Unary signs are combined (0 for +, 1 for -). Unary + is never output.
+     Binary sign is indicated as 1 for -, 2 for +.
+     Digits are accumulated as a string.
+     Variables are accumulated as a list of 1-character strings, but the
+     variable list also includes subexpression strings, e.g. '14**(32)'
+     ( ... ) gets converted and appended to vars [with the parens included]
+     ?^{ ... } gets converted and ? is replaced by ?^( ) and appended to vars
+     Subexpression conversions are trigger by ')', '}', or any operator.
+     unary -?^? requires parens: -(?^?)
+     unary -?%? requires parens: mod(-?,?)
+  */
+  const theta=0,p=0,q=0,r=0,s=0,t=0,u=0,v=0,w=0,x=0,y=0,z=0;    // for eval test at end
+  var js = '';   // output javascript expression
+  var sign;      // unary sign: 0 -> +, 1 -> -
+  var digits;    // string of digits
+  var vars;      // sequence of variables and subexpressions with implied multiplication
+  var binary;    // 0 if first sign not binary, 1 if -, 2 if +
+  var i,b,c,d;
+  var recur = [];       // saved variables for recursion
+  function reset() {    // start of subexpression
+    sign = 0;
+    digits = '';
+    vars = [];
+    binary = 0;
+  }
+  function finish(op) {    // lhs completed with binary op
+    if (digits.length) {
+      vars.push(digits);
+    }
+    if (!vars.length) {
+      if (op.length) {
+	throw new SyntaxError('No left hand arg for '+op+' at '+i);
+      }
+    } else {
+      if (vars[0].slice(-1)==',') {    // complete mod
+	vars[0] += vars.slice(1).join('*')+')';
+	vars.length = 1;
+	sign = 0;
+	digits = '';
+	binary = 0;
+      }
+      if (op=='%') {            // start mod
+	vars[0] = 'mod(' + (sign ? '-1*' : '') + vars.join('*') + ',';
+	vars.length = 1;
+	sign = 0;
+	digits = '';
+      } else {    // append js with unary sign and accumulated vars, followed by op
+	js += (binary ? '+-'[(binary+sign)&1] : sign ? '-' : '') + 
+	  ((vars.length > 1 || !binary && sign && vars[0].indexOf('**') >= 0) ? 
+	   '(' + vars.join('*') + ')' : vars[0]) + op;
+	reset();
+      }
+    }
+  }
+  function usign(op) {    // accumulate unary signs
+    var j;         // 0 -> +, 1-> -
+    var unary=0;   // for accumulating signs
+    while (i < expr.length-1) {
+      if ((j = '+-'.indexOf(expr[i+1])) < 0) break;
+      unary ^= j;
+      ++i;
+    }
+    if (digits.length || vars.length) {    // binary op
+      finish(op);
+      sign = unary;
+    } else {
+      sign ^= '+-'.indexOf(op) ^ unary;
+    }
+  }
+  reset();
+  for (i=0; i < expr.length; i++) {
+    c = expr[i];
+    switch (c) {
+    case '\\':
+      c = expr.slice(i+1).match(/(^\w*)\s*/);
+      i += 1+c[0].length;
+      switch (c[1]) {
+      case 'bmod' :
+	i--;
+	finish('%');
+	break;
+      case 'log_' :
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	if ((c=expr[i]) != '{') {
+	  throw new SyntaxError('Improper base at '+i);
+	}
+	// process base (ending in })
+	vars.push('blog(');
+	recur.push(
+	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	js = '';
+	reset();
+	break;
+      case 'log' :
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	if ((c=expr[i]) != '(') {
+	  throw new SyntaxError('log arg must be parenthesized');
+	}
+	vars.push('blog(e,');
+	recur.push(	  // process arg ending in )
+	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	js = '';
+	reset();
+	break;
+      case 'atan' :
+	if ((c=expr[i]) != '(') {
+	  throw new SyntaxError('Improper arg at '+i);
+	}
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	// first arg ends with , or only arg ends with )
+	vars.push('atan(');
+	recur.push(
+	    {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	js = '';
+	reset();
+	break;
+      default :
+	if (digits.length) {
+	  vars.push(digits);
+	}
+	vars.push('Math.'+c[1]+'(');
+	if ((c=expr[i]) != '(' && c != '{') {
+	  throw new SyntaxError('Improper arg at '+i);
+	}
+	recur.push(
+	  {c:c,js:js,sign:sign,vars:vars,binary:binary});
+	js = '';
+	reset()
+	break;
+      }
+      break;
+    case ',' :    // first arg of atan
+      if (!recur.length) {
+	throw new SyntaxError('Unexpected comma at position '+i);
+      }
+      finish(',');
+      b = recur[recur.length-1];
+      b.vars[b.vars.length-1] += js;
+      js = '';
+      reset();
+      break;
+    case '^' :
+      if ((c=expr[++i]) != '{') {
+	throw new SyntaxError('Improper exponent at '+i);
+      }
+      if (digits.length) {
+	vars.push(digits);
+      }
+      if (vars.length) {
+	vars.push(vars.pop() + '**(');
+      } else {
+	throw new SyntaxError('Exponent without base at position '+i);
+      }
+      recur.push(
+	{c:c,js:js,sign:sign,vars:vars,binary:binary});
+      js = '';
+      reset();
+      break;
+    case '{' :
+    case '(' :
+      if (digits.length) {
+	vars.push(digits);
+      }
+     recur.push(
+	{c:c,js:js,sign:sign,vars:vars,binary:binary});
+      js = c;
+      reset();
+      break;
+    case '}' :    // terminates ^ or _ or \abs
+    case ')' :    // terminates (
+      if (!recur.length) {
+	throw new SyntaxError('Unmatched '+c+' at position '+i);
+      }
+      b = recur[recur.length-1];
+      if (b.vars.length && b.vars[b.vars.length-1] == 'blog(') {
+	if ((c=expr[++i]) != '(') {
+	  throw new SyntaxError('log arg must be parenthesized');
+	}
+	b.c = c;
+	finish(',');
+	b.vars[b.vars.length-1] += js;
+	js = '';
+	reset();
+	break;
+      }
+      finish(')');
+      b = recur.pop();
+      vars = b.vars;
+      binary = b.binary;
+      if (b.vars.length &&
+	  ((d = b.vars[b.vars.length-1].slice(-1)) == ',' || d == '(')) {
+	b.vars[b.vars.length-1] += js;
+      } else {
+	vars.push(js);
+      }
+      digits = '';
+      sign = b.sign;
+      js = b.js;
+      b = b.c;
+      if (!(b == '(' && c == ')' || b == '{' && c == '}')) {
+	throw new SyntaxError('Unmatched '+c+' at position '+i);
+      }
+      break;
+    case '+' :
+    case '-' :
+      usign(c);
+      break;
+    case '\u00d7' :    //times
+      finish('*');
+      break;
+    case '\u00f7' :    //divide
+      finish('/');
+      break;
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+      digits += c;
+      break;
+    case '.':
+      if (digits.indexOf('.') >= 0) {
+	throw new SyntaxError('Multiple decimal points');
+      }
+      digits += c;
+      break;
+    case '!':
+      if (digits.length) {
+	vars.push(digits);
+	digits = '';
+      }
+      vars.push('factorial('+vars.pop()+')');
+      digits = '';
+      break;
+    default :
+      if ('epqrstuvwxyz'.indexOf(c) >= 0 || (c = greek[c])) {
+	if (digits.length) {
+	  vars.push(digits);
+	  digits = '';
+	}
+	vars.push(c);
+	break;
+      }
+      throw new SyntaxError('Unrecognized symbol');
+    }
+  }
+  if (recur.length) {
+    throw new SyntaxError('Premature termination of expression');
+  }
+  finish('');
+  eval(js);    // might get syntax error
+  return js;
+}
+/****************************************************************/
+
+function showhidenext(o) {
+  if (o.innerHTML=='Hide') {
+    o.nextElementSibling.style.display='none';
+    o.innerHTML = 'Show';
+  } else {
+    o.nextElementSibling.style.display='inline';
+    o.innerHTML = 'Hide';
+  }
+}
+
+function showhelp(s) {
+  var o = document.getElementById(s);
+  o.style.display='block';
+}		      
+
+function showpopup(o,s) {
+  var b = document.body.getClientRects()[0];
+  var r = o.getClientRects()[0];
+  o = document.getElementById(s);
+  o.style.display='block';
+  var q = o.getClientRects()[0];
+  o.style.position = 'absolute';
+  o.style.left = Math.max(window.scrollX,
+			  Math.min(window.scrollX+window.innerWidth-q.width,
+				   (r.width-q.width)/2))+'px';
+  o.style.top = Math.max(window.scrollY,
+			 Math.min(window.scrollY+window.innerHeight-q.height,
+				  (r.top+r.bottom-q.height)/2-b.top))+'px';
+}
+</script>
+<style>
+#canvas {
+  position:absolute;
+  top:0;
+  left:0;
+  pointer-events:none;
+}
+div.box {
+  z-index:1;
+  position:absolute;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  top:0;
+  left:0;
+  padding:0 24px;
+  background-color:white;
+  border:1px solid black;    
+  max-width:inherit;
+  height:30px;
+  cursor:grab;
+}
+div.pseudobox {
+  z-index:1;
+  position:absolute;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  top:0;
+  left:0;
+  background-color:white;
+  width:.5em;
+  height:1em;
+}
+p.math {
+  text-align:right;
+}
+p.port {
+  position:absolute;
+  text-align:left;
+  font-family:serif;
+  font-style:italic;
+  padding:2px;
+  cursor:crosshair;
+}
+p.mport {
+  position:absolute;
+  text-align:right;
+  font-family:serif;
+  font-style:roman;
+  padding:2px 0px;
+  cursor:crosshair;
+}
+p.top {
+  background-color:white;
+  z-index:2;
+  position:fixed;
+  left:0;top:0;
+  text-align:left;
+  font-size:.75em;
+  margin:0;
+}
+#topbox {
+  display:grid;
+  grid-template-columns: 460px 60px;
+  align-items:center;
+}
+#mathdiv {
+  z-index:1;
+  margin-top:10px;
+  float:left;
+}
+.exprbox {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:440px;
+  height:32px;
+  border:1px solid black;
+  padding:0;
+  margin:0;
+  text-align:center;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+.invisible {display:none}
+#debugger {
+  font-size:1em;
+}
+#debug {
+  display:none;
+}
+button {
+  margin:2px;
+  font-size:18px;
+}    
+#mathbox {
+  margin-bottom:2px;
+}
+#bs {margin-left:32px;}
+#expression {display:inline;}
+#exprdiv {
+  overflow:hidden;
+  white-space:nowrap;
+  width:512px;
+}
+.var {
+  font-family:serif;
+  font-style:italic;
+}
+.popup {
+  background-color:white;
+  display:none;
+  z-index:2;
+  position:absolute;
+  top:0;
+  left:0;
+  padding:6px;
+  margin:6px;
+  border:1px solid black;
+  max-width:inherit;
+}
+#plot {
+  float:left;
+  display:grid;
+  grid-template-columns: 20px 100px 313px 100px;
+  grid-template-rows: 100px 313px 100px 20px;
+  margin-top:10px;
+  margin-left:10px;
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance:none;
+  margin:0;
+}
+input[type=number] {
+  width:100px;
+  height:20px;
+  margin:0;
+  box-sizing:border-box;
+  -moz-appearance:textfield;
+  appearance:textfield;
+}
+#top {
+  grid-column-start:1;
+  grid-row-start:1;
+  transform:rotate(-90deg);
+  transform-origin:50px 50px;
+  text-align:right;
+}
+#bot {
+  grid-column-start:1;
+  grid-row-start:3;
+  transform:rotate(-90deg);
+  transform-origin:50px 50px;
+  text-align:left;
+}
+#lft {
+  grid-column-start:2;
+  grid-row-start:4;
+  text-align:left;
+}
+#rgt {
+  grid-column-start:4;
+  grid-row-start:4;
+  text-align:right;
+}
+#plotarea {
+  grid-column-start:2;
+  grid-column-end:span 3;
+  grid-row-start:1;
+  grid-row-end:span 3;
+  width:513px;
+  height:513px;
+}
+.varlabel {
+  font-family:serif;
+  font-style:italic;
+  text-align:center;
+  margin:0;
+}
+#x {
+  grid-row-start:4;
+  grid-column-start:3;
+}
+#y {
+  grid-row-start:2;
+  grid-column-start:1;
+  align-self:center;
+}
+#helper {
+  text-decoration:underline;
+  font-size:11px;
+  cursor:context-menu;
+  margin-left:60px;
+}
+#help {
+  position:absolute;
+  left:270px;top:0;
+  width:750px;
+}
+h2 {
+  text-align:center;
+  margin-top:0;
+}
+ul {
+  padding-left:1em;
+  padding-top:0;
+}
+li {
+  text-indent:.25em;
+}
+table {
+  border-collapse:collapse;
+  margin:0 auto;
+}
+td {
+  text-align:center;
+  width:30px;
+}
+span {
+  text-decoration:underline;
+  cursor:context-menu;
+}
+.nopoint {
+  pointer-events:none;
+}
+.copy {
+  cursor:copy;
+}
+</style>
+</head>
+<body onload='init(this)'>
+<p class='invisible'>\(\DeclareMathOperator{\sgn}{sgn}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\asin}{asin}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\acos}{acos}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\atan}{atan}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\asinh}{asinh}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\acosh}{acosh}\)</p>
+<p class='invisible'>\(\DeclareMathOperator{\atanh}{atanh}\)</p>
+<p class='invisible'>\(\DeclarePairedDelimiters{\abs}{\lvert}{\rvert}\)</p>
+<p class='top'>
+  <a href='fib.html'>Fi &amp; Lu</a>&nbsp;
+  <a href='area.html'>Area</a>&nbsp;
+  <a href='algebra.html'>Algebra</a>
+  <a href='trig.html'>Trigonometry</a>&nbsp;
+  <a href='func.html'>Functions</a>&nbsp;
+  <a href='complex.html'>Complex Numbers</a>&nbsp;
+  <a href='calc.html'>Calculus</a>
+  <span id='helper' onclick="showhelp('help')">HELP</span>
+</p>
+<div id='boxes'>
+</div>
+<div id='mathdiv'>
+<div id='topbox'>
+<div id='mathbox' class='exprbox'><p id='math'></p></div>
+<button id='create'>Make Box</button>
+</div>
+<div id='exprdiv'><p id='expression' contenteditable='plaintext-only'></p><br></div>
+<div id='exprbuttons' tabindex='0'>
+<button class='var' title='theta (h)' key='h'>&theta;</button>
+<button class='var'>p</button>
+<button class='var'>q</button>
+<button class='var'>r</button>
+<button class='var'>s</button>
+<button class='var'>t</button>
+<button class='var'>u</button>
+<button class='var'>v</button>
+<button class='var'>w</button>
+<button class='var'>x</button>
+<button class='var'>y</button>
+<button class='var'>z</button>
+<button id='bs'>Backspace</button>
+<button id='clear'>Clear</button>
+<br>
+<button class='var'>e</button>
+<button class='var' title='pi (i)' key='i'>&pi;</button>
+<button class='var' title='tau=2pi (j)' key='j'>&tau;</button>
+<button class='digit'>0</button>
+<button class='digit'>1</button>
+<button class='digit'>2</button>
+<button class='digit'>3</button>
+<button class='digit'>4</button>
+<button class='digit'>5</button>
+<button class='digit'>6</button>
+<button class='digit'>7</button>
+<button class='digit'>8</button>
+<button class='digit'>9</button>
+<button id='decpt'>.</button>
+<button id='bang' title='factorial'>!</button>
+<br>
+<button id='plus' class='op' title='plus (+)' key='+'>+</button>
+<button id='minus' class='op' title='minus (-)' key='-'>&minus;</button>
+<button id='times' class='op binary' title='times (*)' key='*'>&times;</button>
+<button id='divide' class='op binary' title='divide (/)' key='/'>&divide;</button>
+<button id='mod' class='op binary' title='modulo (%)' key='%'>mod</button>
+<button id='powup' class='op' title='exponentiate (^)' key='^'>&uparrow;</button>
+<button id='powdn' class='op closer' title='end exponent (\)' key='\\'>&downarrow;</button>
+<button id='sgn' class='op' title='signum (S)' key='S'>sgn</button>
+<button id='abs' class='op' title='absolute value (V)' key='V'>abs</button>
+<button id='oparen' class='op' key='('>(</button>
+<button id='cparen' class='op closer' key=')'>)</button>
+<br>
+<button id='exp' class='op ex' title='exp (E)' key='E'>exp</button>
+<button id='log' class='op' title='logarithm (l), default base = e' key='l'>log</button>
+<button id='base' class='op' title='base of log, terminated with comma' key='_'>_</button>
+<button id='comma' class='op closer' title='end base or first arg' key=','>,</button>
+<button id='sin' class='op ex' title='sine (b)' key='b'>sin</button>
+<button id='cos' class='op ex' title='cosine (c)' key='c'>cos</button>
+<button id='tan' class='op ex' title='tangent (d)' key='d'>tan</button>
+<button id='asin' class='op ex' title='arcsine (f)' key='f'>asin</button>
+<button id='acos' class='op ex' title='arccosine (g)' key='g'>acos</button>
+<button id='atan' class='op ex' title='arctangent (a), 1 or 2 args' key='a'>atan</button>
+<br>
+<button id='sinh' class='op ex' title='hyperbolic sine (B)' key='B'>sinh</button>
+<button id='cosh' class='op ex' title='hyperbolic cosine (C)' key='C'>cosh</button>
+<button id='tanh' class='op ex' title='hyperbolic tangent (D)' key='D'>tanh</button>
+<button id='asinh' class='op ex' title='arg hyperbolic sine (F)' key='F'>asinh</button>
+<button id='acosh' class='op ex' title='arg hyperbolic cosine (G)' key='G'>acosh</button>
+<button id='atanh' class='op ex' title='arg hyperbolic tangent (A)' key='A'>atanh</button>
+</div>
+<button id='debugger' onclick='showhidenext(this)' title='show/hide javascript code for current math expression'>Show</button>
+<p id='debug'></p>  
+<br>
+<p id='value'></p>
+</div>
+<!--Plotting
+    We have a canvas for the plot
+    To the left we have two input elements for upper and lower ordinate limits
+    On the top we have two input elements for lower and upper abscissa limits
+    The limits can be auto-set based on what is being plotted?
+-->
+<div id='plot'>
+  <input id='top' class='lim' type='number'></input>
+  <p id='y' class='varlabel'>y</p>
+  <input id='bot' class='lim' type='number'></input>
+  <canvas id='plotarea'></canvas>
+  <input id='lft' class='lim' type='number'></input>
+  <p id='x' class='varlabel'>x</p>
+  <input id='rgt' class='lim' type='number'></input>
+  </div>
+</div>
+<canvas id='canvas'></canvas>
+<div id='help' class='popup' onclick='this.style.display="none";'>
+<h2>Entering and plotting mathematical expressions</h2>
+<p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
+<table><tbody><tr><td>%</td><td>S</td><td>V</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
+<td>mod</td><td>sgn</td><td>|abs|</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
+<br>
+<table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
+<tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
+<p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored.</p>
+  <p>Once you&rsquo;ve entered an expression, click &ldquo;Make Box&rdquo; to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. Only one output port can be connected to any input port. Hovering over a port shows its value.</p>
+<p>The plot area has input boxes for minimum and maximum <i>x</i> and <i>y</i> values. Just to its left are special input ports for <i>x</i> and <i>y</i> coordinates. On the left edge of the page, there are three special output ports, labeled <i>t</i>, <i>x</i>, and <i>y</i>. They sweep from &minus;1 to 1, from minimum to maximum <i>x</i>, and from minimum to maximum <i>y</i>, respectively.</p>
+<p>If the special input ports have values, a plot is shown. New plots are triggered whenever a new connection is made or when any coordinate limit is changed.</p>
+<p><b>Click to hide this popup.</b></p></div>
+</body>
+</html>
