@@ -619,12 +619,19 @@ function plot() {
   const y0 = document.getElementById('bot').valueAsNumber;
   const y1 = document.getElementById('top').valueAsNumber;  
   var t;
+  var k;    // counter
   var i,j;
+  var hi,hj;
   var oi,oj;    // old values to decide between moveTo and lineTo
   var d;    // distance between old and new points
   var x,y;
-  if (!(x0<x1 && y0<y1)) throw new Error('Low Limits Must Be Less Than High Limits');
   pcx.clearRect(0,0,side,side);
+  if (!(x0<x1 && y0<y1)) {
+    pcx.font = '50px Arial';
+    pcx.textAlign = 'center';
+    pcx.fillText("Range Error",side/2,side/2);
+    throw new Error('Low Limits Must Be Less Than High Limits');
+  }
   pcx.strokeStyle='gray';
   if (x0 < 0 && 0 < x1) {
     pcx.beginPath();
@@ -640,8 +647,8 @@ function plot() {
   }
   pcx.strokeStyle='black';
   pcx.beginPath();
-  for (t = -1; t <= 1; t += 2**-10) {
-    portt.value = t;
+  for (k=0; k<=2048; ++k) {
+    portt.value = t = k/1024-1;
     portx.value = (x0*(1-t) + x1*(1+t))/2;
     porty.value = (y0*(1-t) + y1*(1+t))/2;
     evaluate();
@@ -649,13 +656,20 @@ function plot() {
     y = yport.value.value;
     i = (side-1)*(x-x0)/(x1-x0);
     j = (side-1)*(y1-y)/(y1-y0);
-    if (t==-1 || Math.sqrt((i-oi)**2+(j-oj)**2) > 5) {
-      pcx.moveTo(i,j);
+    if (k&1) {
+      hi = i;
+      hj = j;
     } else {
-      pcx.lineTo(i,j);
+      if (!k) {
+	pcx.moveTo(i,j);
+      } else {
+	d = .75*((i-oi)**2+(j-oj)**2);
+	d < 4 || (hi-oi)**2+(hj-oj)**2 < d && (i-hi)**2+(j-hj)**2 < d ?
+	  pcx.lineTo(i,j) : pcx.moveTo(i,j);
+      }
+      oi = i;
+      oj = j;
     }
-    oi = i;
-    oj = j;
   }
   pcx.stroke();
 }
@@ -842,6 +856,10 @@ function algkey(event) {    // key down
 
 function dokey(k) {
   var o;
+  const x='\b\x7f\r\n'.indexOf(k);
+  if (x >= 0) {
+    k = ['Backspace','Enter'][x>>1];
+  }
   if (k.length > 1) {
     if (k == 'Delete') {
       expr = [];
@@ -915,7 +933,7 @@ function expand(expr) {    // expand expr for display
 
 function create(event) {    // create pressed
   const m = MathJax.startup.document.getMathItemsWithin([document.getElementById('math')])[0].math;
-  new Box(200,200,m);
+  m && new Box(200,200,m);
 }
 
 function clear(event) {    // clear pressed
@@ -1975,9 +1993,10 @@ span {
 <table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
 <tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
 <p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored.</p>
-  <p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. Only one output port can be connected to any input port. Hovering over a port shows its value.</p>
+<p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. (Click and drag a port to the to-be-connected port.) Only one output port can be connected to any input port. Hovering over a port shows its value.</p>
 <p>The plot area has input boxes for minimum and maximum <i>x</i> and <i>y</i> values. Just to its left are special input ports for <i>x</i> and <i>y</i> coordinates. On the left edge of the page, there are three special output ports, labeled <i>t</i>, <i>x</i>, and <i>y</i>. They sweep from &minus;1 to 1, from minimum to maximum <i>x</i>, and from minimum to maximum <i>y</i>, respectively.</p>
 <p>If the special input ports have values, a plot is shown. New plots are triggered whenever a new connection is made or when any coordinate limit is changed.</p>
+<p>For example, to create a polar plot of \(\sin 5\theta\), create a box with that expression; create three other boxes: \(\pi(t+1)\) to scan from 0 through &tau; = 2&pi;, and \(r\cos\theta\) and \(r\sin\theta\) to convert polar coordinates to Cartesian coordinates; connect the outputs of the last two to the special input ports <i>x</i> and <i>y</i> respectively; connect their <i>r</i> ports to the output port of \(\sin 5\theta\); and finally, connect the scanner&rsquo;s <i>t</i> port to the special <i>t</i> output port and its output port to all three <i>&theta;</i> ports. Using your keyboard or the paste facility, you can make the four boxes by entering or pasting i(t+1)&crarr;b(5h)&crarr;rc(h)&crarr;rb(h)&crarr;, where &crarr; represents the Enter key or a carriage return and/or line feed character.</p>
 <p><b>Click to hide this popup.</b></p></div>
 </body>
 </html>
