@@ -441,6 +441,7 @@ function mdnhandler(e) {    // mouse down (touchstart)
   var tc = target.classList;
   if (tc.contains('port')) {    // input port
     e.preventDefault();
+    target.releasePointerCapture(e.pointerId);
     mstate = 2;
     var xy = getCenterLeft(target);
     x0 = xy.x;
@@ -448,6 +449,7 @@ function mdnhandler(e) {    // mouse down (touchstart)
     clean(target);      // remove previous line ending at this port
   } else if (tc.contains('mport')) {    // output port
     e.preventDefault();
+    target.releasePointerCapture(e.pointerId);
     mstate = 3;
     var xy = getCenterRight(target);
     x0 = xy.x;
@@ -1642,6 +1644,9 @@ function showpopup(o,s) {
 }
 </script>
 <style>
+body {
+  touch-action:none;
+}
 #canvas {
   position:absolute;
   top:0;
