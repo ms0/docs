@@ -1680,8 +1680,13 @@ div.pseudobox {
   width:.5em;
   height:1em;
 }
+p.math * {
+  pointer-events:none;
+}
 p.math {
   text-align:right;
+  pointer-events:none;
+  user-select:none;
 }
 p.port {
   position:absolute;
@@ -1690,6 +1695,7 @@ p.port {
   font-style:italic;
   padding:2px;
   cursor:crosshair;
+  user-select:none;
 }
 p.mport {
   position:absolute;
@@ -1698,6 +1704,7 @@ p.mport {
   font-style:roman;
   padding:2px 0px;
   cursor:crosshair;
+  user-select:none;
 }
 p.top {
   background-color:white;
