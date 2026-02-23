@@ -1109,9 +1109,9 @@ function addplot(vars) {    // plot expressions with current limits
   var changed = true;
   ctx.clearRect(0,0,side,side);
   if (!(x0<x1 && y0<y1)) {
-    pcx.font = '50px Arial';
-    pcx.textAlign = 'center';
-    pcx.fillText("Range Error",side/2,side/2);
+    ctx.font = '50px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText("Range Error",side/2,side/2);
     throw new Error('Low Limits Must Be Less Than High Limits');
   }
   vvars = {};
