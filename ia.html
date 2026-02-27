@@ -1328,6 +1328,12 @@ button {
   width:50px;
   font-size:12px;
 }
+.exprbox > * {
+  pointer-event:none;
+}
+.exprbox * {
+  cursor:grab;
+}
 .exprbox {
   display:flex;
   justify-content:center;
@@ -1340,9 +1346,7 @@ button {
   text-align:center;
   overflow-x:auto;
   overflow-y:hidden;
-}
-.exprbox * {
-  cursor:grab;
+  user-select:none;
 }
 .up {
   background-color:white;  
@@ -1612,10 +1616,11 @@ span {
 <li>Finally, enter <span class='copy' onclick='copyandpaste(event)'><span class='nopoint'>\(\tau x\)</span></span> and drag it to box \(t\) and click PLOT at box \(q\).</li>
   <li>After observing the result, enter <span class='copy' onclick='copyandpaste(event)'><span class='nopoint'>\(5\theta\)</span></span> and drag it to box \(t\).</li>
 </ul>
-<p>This should give you a flavor of what can be done. <b>Click to hide this popup.</b></p>
+<p>This should give you a flavor of what can be done. For a more flexible and somewhat graphical interface, try <a href='iax.html'>here</a>.</p>
 <p><span onclick='advance(event)'>Enable advanced math functions</span>:</p>
 <table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
 <tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
+<p><b>Click to hide this popup.</b></p>
 </div>
 </body>
 </html>
@@ -1624,26 +1629,10 @@ span {
     We may need to reparse when we delete (using backspace or delete key)
     We can keep multiple expressions in an array, displaying all of them
     To plot expressions we may color code so more than one can appear together
-    Plot may compute range and domain, or user may adjust with cursor or other command
-    Current expression is selected by cursor for input or editing
     ) closes (, provided it's on the same exponent level
     v closes ^, provided there are no unclosed (s
     Only legitimate continuations of expression can be selected (others are grayed out)
-    Selections:
     operators: + - x / mod ^ v ( ) (square?root??)
-    variables: r s t u v w x y z (concatenation is multiplication)
+    variables: p q r s t u v w x y z (concatenation is multiplication)
     constants: 0 1 2 3 4 5 6 7 8 9 (concatenation is concatenation) !
-
-    additional operators: log_b x, atan(y,x)
-      atan first arg can be terminated with , or ). If ), second arg is 1.
-    allow restricted mode where some operations/variables don't appear?
-
-    commands: new? plot?     
-    = ?
-    apply op arg to both sides ?
-    apply "first" operation (possibly of given kind?)
-    keep stack of operations so can undo
-    can we color operations that are doable?
-    for polynomials (in one or more variables), gather?
-    apply commute, distribute ?
 -->

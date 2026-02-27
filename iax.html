@@ -1878,9 +1878,6 @@ span {
   text-decoration:underline;
   cursor:context-menu;
 }
-.nopoint {
-  pointer-events:none;
-}
 .copy {
   cursor:copy;
 }
@@ -2006,7 +2003,7 @@ span {
 <table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
 <tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
 <p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored.</p>
-<p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. (Click and drag a port to the to-be-connected port.) Only one output port can be connected to any input port. Hovering over a port shows its value.</p>
+<p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. (Click and drag a port to the to-be-connected port.) Only one output port can be connected to any input port. Hovering over a port shows its value. If you are on a touchscreen-only device, you might want to enable a virtual touchpad, or use <a href='ia.html'>this more touchscreen-friendly interface</a>.</p>
 <p>The plot area has input boxes for minimum and maximum <i>x</i> and <i>y</i> values. Just to its left are special input ports for <i>x</i> and <i>y</i> coordinates. On the left edge of the page, there are three special output ports, labeled <i>t</i>, <i>x</i>, and <i>y</i>. They sweep from &minus;1 to 1, from minimum to maximum <i>x</i>, and from minimum to maximum <i>y</i>, respectively.</p>
 <p>If the special input ports have values, a plot is shown. New plots are triggered whenever a new connection is made or when any coordinate limit is changed.</p>
 <p>For example, to create a polar plot of \(\sin 5\theta\), create a box with that expression; create three other boxes: \(\pi(t+1)\) to scan from 0 through &tau; = 2&pi;, and \(r\cos\theta\) and \(r\sin\theta\) to convert polar coordinates to Cartesian coordinates; connect the outputs of the last two to the special input ports <i>x</i> and <i>y</i> respectively; connect their <i>r</i> ports to the output port of \(\sin 5\theta\); and finally, connect the scanner&rsquo;s <i>t</i> port to the special <i>t</i> output port and its output port to all three <i>&theta;</i> ports. Using your keyboard or the paste facility, you can make the four boxes by entering or pasting i(t+1)&crarr;b(5h)&crarr;rc(h)&crarr;rb(h)&crarr;, where &crarr; represents the Enter key or a carriage return and/or line feed character.</p>
