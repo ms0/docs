@@ -1327,7 +1327,7 @@ function mod(a,b) {    // mathematical mod function
   var f,r,s;
   var p;    // prime factors
   if (Number.isInteger(b)) {   // integer modulus: value in [0,|b|).
-    if (!Number.isInteger(a) && b != 1) {
+    if (!Number.isInteger(a) && Number.isFinite(a) && b != 1) {
       r = rational(a);
       f = factor(r[1],b);
       var x=r[0];
@@ -1390,7 +1390,7 @@ function expr2js(expr) { // convert math expression to javascript expression
       }
     } else {
       if (vars[0].slice(-1)==',') {    // complete mod
-	vars[0] += vars.slice(1).join('*')+')';
+	vars[0] += (sign ? '-' : '') +vars.slice(1).join('*')+')';
 	vars.length = 1;
 	sign = 0;
 	digits = '';
@@ -1401,6 +1401,7 @@ function expr2js(expr) { // convert math expression to javascript expression
 	vars.length = 1;
 	sign = 0;
 	digits = '';
+	binary = 0;
       } else {    // append js with unary sign and accumulated vars, followed by op
 	js += (binary ? '+-'[(binary+sign)&1] : sign ? '-' : '') + 
 	  ((vars.length > 1 || !binary && sign && vars[0].indexOf('**') >= 0) ? 
@@ -1411,13 +1412,14 @@ function expr2js(expr) { // convert math expression to javascript expression
   }
   function usign(op) {    // accumulate unary signs
     var j;         // 0 -> +, 1-> -
+    var l;
     var unary=0;   // for accumulating signs
     while (i < expr.length-1) {
       if ((j = '+-'.indexOf(expr[i+1])) < 0) break;
       unary ^= j;
       ++i;
     }
-    if (digits.length || vars.length) {    // binary op
+    if (digits.length || (l = vars.length) && vars[l-1].slice(-1)!=',') {    // binary op
       finish(op);
       sign = unary;
     } else {
@@ -1550,9 +1552,10 @@ function expr2js(expr) { // convert math expression to javascript expression
       b = recur.pop();
       vars = b.vars;
       binary = b.binary;
-      if (b.vars.length &&
-	  ((d = b.vars[b.vars.length-1].slice(-1)) == ',' || d == '(')) {
-	b.vars[b.vars.length-1] += js;
+      if ((d = vars.length) &&
+	  (d = b.vars[d-1]).slice(0,3) != 'mod' &&
+	  ((d = d.slice(-1)) == ',' || d == '(')) {
+	vars[vars.length-1] += js;
       } else {
 	vars.push(js);
       }
