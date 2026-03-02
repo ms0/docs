@@ -1212,19 +1212,12 @@ function xgcd(a,b) {    // extended gcd: return [g,u,v] where g=ua+vb
 }
 
 function factor(n,b) {    // factor n into primes up to (but not including) b
-  if (!Number.isInteger || n < 1) {
+  if (!Number.isInteger(n) || n < 1) {
     throw new TypeError('Only positive integers can be factored');
   }
   var f = {};
   if (n == 1) return f;
-  if (b <= 2) return {n:1};
-  var p = 2;
-  while (!(n&1)) {
-    f[p] = (f[p] || 0) + 1;
-    n >>= 1;
-  }
-  if (n == 1) return f;
-  for (p = 1; (p+=2) < b; ) {
+  for (var p = 2; p < b; p = (p+1)|1) {
     while (!(n%p)) {
       f[p] = (f[p] || 0) + 1;
       n /= p;
@@ -1330,7 +1323,7 @@ function mod(a,b) {    // mathematical mod function
     if (!Number.isInteger(a) && Number.isFinite(a) && b != 1) {
       r = rational(a);
       f = factor(r[1],b);
-      var x=r[0];
+      var x=r[0]%b;
       for (p in f) {
 	if (p >= b) {
 	  x = 0;
@@ -1341,9 +1334,9 @@ function mod(a,b) {    // mathematical mod function
 	  x = 0;
 	  break;
 	}
-	x *= s[1]**f[p];
+	x = (x*s[1]**f[p])%b;
       }
-      if (x) return mod(x,b);
+      if (x) return x;
     }
     r = a%b;
     return r < 0 ? r + b : Math.abs(r);    // don't want -0
