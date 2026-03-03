@@ -757,7 +757,9 @@ function mod(a,b) {    // mathematical mod function
 	}
 	x = (x*s[1]**f[p])%b;
       }
-      if (x) return x;
+      if (x) {
+	return x < 0 ? x + b : x;
+      }
     }
     r = a%b;
     return r < 0 ? r + b : Math.abs(r);    // don't want -0
