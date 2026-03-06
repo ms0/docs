@@ -31,6 +31,8 @@ Each input port can be connected to only one output port.
 May want to allow plot to have multiple paired x and y inputs, colored?
 
 ****************************************************************/
+var currentBox;
+
 const pi = Math.PI;
 const tau = 2*pi;
 const e = Math.E;
@@ -262,6 +264,7 @@ var boxesdiv;   // #boxes
 var cvs;        // #canvas
 var ctx;        // canvas context
 var boxes = [];      // list of boxes
+var spboxes = [];    // list of special boxes
 const lines = new Set();      // set of lines
 var valueobj;
 var pcv;
@@ -379,7 +382,7 @@ function clean(port) {    // remove any line going to this input port
 	break;
       }
     }
-    evaluate();
+    spevaluate();
     valueobj.innerHTML = i.value.value;
   }
 }
@@ -422,18 +425,20 @@ function getCoords(o) {
   return {y: rect.y+sy, x: rect.x+sx};
 }
 
-function getCenterLeft(o) {
-  var rect = o.getBoundingClientRect();
-  var sx = window.pageXOffset;
-  var sy = window.pageYOffset;
-  return {y: (rect.top+rect.bottom)/2+sy, x: rect.left+sx};
-}
-
-function getCenterRight(o) {
-  var rect = o.getBoundingClientRect();
-  var sx = window.pageXOffset;
-  var sy = window.pageYOffset;
-  return {y: (rect.top+rect.bottom)/2+sy, x: rect.right+sx};
+function getAnchor(o) {
+  const rect = o.getBoundingClientRect();
+  const sx = window.pageXOffset;
+  const sy = window.pageYOffset;
+  const c = o.classList;
+  var x0,y0;
+  if (c.contains('sport')) {
+    x0 = (rect.left+rect.right)/2;
+    y0 = rect.bottom;
+  } else {
+    y0 = (rect.top+rect.bottom)/2;
+    x0 = c.contains('mport') ? rect.right : rect.left;
+  }    
+  return {y: y0+sy, x: x0+sx};
 }
 
 function mdnhandler(e) {    // mouse down (touchstart)
@@ -443,7 +448,7 @@ function mdnhandler(e) {    // mouse down (touchstart)
     e.preventDefault();
     target.releasePointerCapture(e.pointerId);
     mstate = 2;
-    var xy = getCenterLeft(target);
+    var xy = getAnchor(target);
     x0 = xy.x;
     y0 = xy.y;
     clean(target);      // remove previous line ending at this port
@@ -451,7 +456,7 @@ function mdnhandler(e) {    // mouse down (touchstart)
     e.preventDefault();
     target.releasePointerCapture(e.pointerId);
     mstate = 3;
-    var xy = getCenterRight(target);
+    var xy = getAnchor(target);
     x0 = xy.x;
     y0 = xy.y;
   } else if (tc.contains('box')) {
@@ -653,7 +658,7 @@ function plot() {
     portt.value = t = k/1024-1;
     portx.value = (x0*(1-t) + x1*(1+t))/2;
     porty.value = (y0*(1-t) + y1*(1+t))/2;
-    evaluate();
+    spevaluate();
     x = xport.value.value;
     y = yport.value.value;
     i = (side-1)*(x-x0)/(x1-x0);
@@ -680,7 +685,39 @@ function ev(js) {
   return eval(js);    // as a fcn to avoid overwriting variables
 }
 
-function evaluate() {    // reevaluate boxes (except for constants)
+function spevaluate() {   // reevaluate special boxes
+  var i,j,k,z;
+  var box,iports;
+  evaluate();    // for j and k inputs
+  for (i = 0; i < spboxes.length; i++) {
+    box = spboxes[i];
+    iports = box.iports;
+    j = iports[1].value.value;
+    k = iports[0].value.value;
+    if (Number.isInteger(j) && Number.isInteger(k)) {
+      const nv = box.nullvalue;    // 0 for sum, 1 for product
+      var a = nv;
+      var n;
+      for (n = j; n <= k; n++) {
+	box.nport.value = n;
+	evaluate();
+	if ((v = iports[2].value.value) == undefined) {
+	  a = undefined;
+	  break;
+	}
+	if (nv) {
+	  a *= v;
+	} else {
+	  a += v;
+	}
+      }
+      box.oport.value = a;
+      evaluate();
+    }
+  }
+}		
+
+function evaluate() {    // reevaluate normal boxes (except for constants)
   var doneboxes = [];    // evaluated boxes
   var i,j,v;
   var js;
@@ -705,6 +742,7 @@ function evaluate() {    // reevaluate boxes (except for constants)
 	  js = (greek[l] || l) + '=' + v + ';' + js;
 	}
 	if (js) {
+	  currentBox = box;
 	  box.oport.value = ev(js);
 	  doneboxes.push(box);
 	  p++;
@@ -738,8 +776,8 @@ function Line(oport,iport) {
 }
 
 Line.prototype.display = function () {
-  var xyi = getCenterLeft(this.iport.element);
-  var xyo = getCenterRight(this.oport.element);
+  var xyi = getAnchor(this.iport.element);
+  var xyo = getAnchor(this.oport.element);
   ctx.beginPath();
   ctx.moveTo(xyo.x,xyo.y);
   ctx.lineTo(xyi.x,xyi.y);
@@ -747,13 +785,13 @@ Line.prototype.display = function () {
 }
 
 function Port(box,x,y,name,value) {
-  this.box = box || null;	// Box containing this port
-  this.x = x || 0;		// x position of port relative to its box
-  this.y = y || 0;		// y position of port relative to its box
-  this.label = name || '';	// port label
-  this.value = value;		// if an output port, its value (initially undefined)
-				// if an input port, the corresponding output port
-				//  or the default output port if not connected
+  this.box = box || null;   // Box containing this port
+  this.x = x || 0;	    // x position of port relative to its box
+  this.y = y || 0;	    // y position of port relative to its box
+  this.label = name || '';  // port label
+  this.value = value;	    // if an output port, its value (initially undefined)
+			    // if an input port, the corresponding output port
+			    //  or the default output port if not connected
   if (box) {
     var e = box.element;
     var p = this.element = document.createElement('p');
@@ -825,8 +863,14 @@ Box.prototype.delete = function() {
     p.delete();
   }
   this.oport.delete();
+  this.nport && this.nport.delete();
+  MathJax.typesetClear([this.element]);
   this.element.remove();
-  boxes.splice(boxes.indexOf(this),1);
+  if ((p = boxes.indexOf(this)) >= 0) {
+    boxes.splice(p,1);
+  } else if ((p = spboxes.indexOf(this)) >= 0) {
+    spboxes.splice(p,1);
+  }
   drawlines();
 }
 
@@ -874,7 +918,7 @@ function dokey(k) {
     }
   } else if ('0' <= k && k <= '9') {
     expr.push(k);
-  } else if ('ehijpqrstuvwxyz'.indexOf(k) >= 0) {
+  } else if ('ehijnpqrstuvwxyz'.indexOf(k) >= 0) {
     o = document.getElementsByClassName('var')[0];
     if (enabled(o)) expr.push(expr2expression[k] || k);
   } else if ('abcdfglABCDEFGSV'.indexOf(k) >= 0) {
@@ -956,6 +1000,34 @@ function bp(event) {    // button pressed
   expr.push(c.length == 1 ? c : o.getAttribute('key'));
   expression.innerHTML = expand(expr);
   parse();
+}
+
+function createsp(o) {
+  const box = new Box(200,200,'pq');
+  spboxes.push(boxes.pop());
+  const iports = box.iports;
+  const oport = box.oport;
+  const e = box.element;
+  box.nullvalue = 0 + (o.id == 'prod');
+  iports[0].element.innerHTML = iports[0].label = 'k';
+  iports[1].element.innerHTML = iports[1].label = 'j';
+  MathJax.typesetClear([e]);
+  e.firstChild.innerHTML = '\\[\\'+o.id+'_{n=j}^k z\\]';
+  MathJax.typeset([e]);
+  box.js = '';
+  e.style.height = e.clientHeight + 2*portheight + 'px';
+  iports[1].element.style.top =
+    parseInt(iports[1].element.style.top) + portheight + 'px';
+  iports[0].element.style.top = 
+    parseInt(iports[0].element.style.top) + portheight + 'px';
+  oport.element.style.top =
+    parseInt(oport.element.style.top) + portheight + 'px';
+  iports.push(new Port(box,0,0,'z',defaultoport));
+  iports[2].element.style = 'bottom:-18px;right:10px;font-style:normal';
+  iports[2].element.classList.add('sport');
+  const nport = box.nport = new Port(box,0,0,'n',0);
+  nport.element.style = 'bottom:-18px;left:10px;font-style:italic';  
+  nport.element.classList.add('sport');
 }
 
 var parstate;    /* 0: initial or after unary operator (can't have ^)
@@ -1361,7 +1433,7 @@ function expr2js(expr) { // convert math expression to javascript expression
      unary -?^? requires parens: -(?^?)
      unary -?%? requires parens: mod(-?,?)
   */
-  const theta=0,p=0,q=0,r=0,s=0,t=0,u=0,v=0,w=0,x=0,y=0,z=0;    // for eval test at end
+  const theta=0,n=0,p=0,q=0,r=0,s=0,t=0,u=0,v=0,w=0,x=0,y=0,z=0;    // for eval test at end
   var js = '';   // output javascript expression
   var sign;      // unary sign: 0 -> +, 1 -> -
   var digits;    // string of digits
@@ -1591,7 +1663,7 @@ function expr2js(expr) { // convert math expression to javascript expression
       digits = '';
       break;
     default :
-      if ('epqrstuvwxyz'.indexOf(c) >= 0 || (c = greek[c])) {
+      if ('enpqrstuvwxyz'.indexOf(c) >= 0 || (c = greek[c])) {
 	if (digits.length) {
 	  vars.push(digits);
 	  digits = '';
@@ -1762,6 +1834,9 @@ button {
   font-family:serif;
   font-style:italic;
 }
+#sum, #prod {
+  font-family:serif;
+}
 .popup {
   background-color:white;
   display:none;
@@ -1910,6 +1985,7 @@ span {
 <div id='exprdiv'><p id='expression' contenteditable='plaintext-only'></p><br></div>
 <div id='exprbuttons' tabindex='0'>
 <button class='var' title='theta (h)' key='h'>&theta;</button>
+<button class='var'>n</button>
 <button class='var'>p</button>
 <button class='var'>q</button>
 <button class='var'>r</button>
@@ -1972,6 +2048,9 @@ span {
 </div>
 <button id='debugger' onclick='showhidenext(this)' title='show/hide javascript code for current math expression'>Show</button>
 <p id='debug'></p>  
+<br>
+<button id='sum' onclick='createsp(this)'>&Sigma;</button>
+<button id='prod' onclick='createsp(this)'>&Pi;</button>
 <br>
 <p id='value'></p>
 </div>
