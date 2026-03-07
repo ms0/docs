@@ -46,8 +46,8 @@ const expr2expression = {    // non-identity conversions from internal string
   'E' : ' exp',
   'F' : ' asinh',
   'G' : ' acosh',
-  'S' : ' sgn',
-  'V' : ' abs',
+  '$' : ' sgn',
+  '|' : ' abs',
   'a' : ' atan',
   'b' : ' sin',
   'c' : ' cos',
@@ -78,7 +78,7 @@ const greek = {
   '\u0395':'Epsilon','\u0396':'Zeta','\u0397':'Eta','\u0398':'Theta',
   '\u0399':'Iota','\u039a':'Kappa','\u039b':'Lambda','\u039c':'Mu',
   '\u039d':'Nu','\u039e':'Xi','\u039f':'Omicron','\u03a0':'Pi',
-  '\u03a1':'Rho','\u03a2':'Sigma','\u03a4':'Tau','\u03a5':'Upsilon',
+  '\u03a1':'Rho','\u03a3':'Sigma','\u03a4':'Tau','\u03a5':'Upsilon',
   '\u03a6':'Phi','\u03a7':'Chi','\u03a8':'Psi','\u03a9':'Omega',
   '\u03b1':'alpha','\u03b2':'beta','\u03b3':'gamma','\u03b4':'delta',
   '\u03b5':'epsilon','\u03b6':'zeta','\u03b7':'eta','\u03b8':'theta',
@@ -89,72 +89,12 @@ const greek = {
 };
 
 /****************************************************************
- idea for new scheme:
-   boxes for constants, variables, numbers, operations; lines for interaction
-   ... converted to math expressions
-   always one output, but possible multiple inputs, e.g. atan, b^x, log_b x
-   ... the last two defaulting b to e
-   ... Sum and Product ?
-   How do we plot?
-    range creates t values, t is mapped to x and y, sequence input to plotbox
-    plotbox has x and y inputs, no outputs
-
-TODO:
-  pulldown menu of "canned" math boxes with precomputed jsexprs
-    all the trig and hyperbolic trig functions, mod, log
-  simple compound boxes with just + - * / ** [no mod, no atan, no log]
-
-  create a box with a given math expression [use code from ia]
-  copy a box
-  convert math expression to javascript [modify code from ia]
-  check for loops--don't allow them?
-  special sum, product, and plot boxes; range boxes?
-  evaluation
-
-  range inputs: lo, hi, increment
-        output: values
-  NOT A STANDALONE; part of sum, product, and plot networks
-  Sum: iteration variable goes to expression network,
-       resulting values are summed to get value of Sum
-  Product: iteration variable goes to expression network,
-       resulting values are multiplied to get value of Product
-  PLOT: iteration variable goes to expression network,
-       resulting <iteration variable, value> pairs are plotted
-    3 variants? <x,y> <y,x> <r,theta>,
-    but perhaps instead <t,x(t),y(t)> ?
-
-Prototype without user input of boxes (use a fixed set). Just adding lines?
-Use dropdown menu for box types? functions, operators (unary, binary)
-Unary ops: -, abs, sgn, floor, ceiling, round?, ! (allow gamma if not integer?)
-Binary ops: +, -, *, /, %, **
-Fcns: trig, invtrig, hyperbolic, invhyp, exp, ln, gamma
-2-variable fcns: log_, atan2
-Use only simple box types and allow user to lasso a set and have the system
-produce a single macro box, figuring out the equation. Might have to assign
-variable (i.e., port) names. Might need to know precedence to avoid parens.
-
-User guide...
-User inputs a math expression, and from it creates a box. The inputs to the
-box are the free variables in the expression, and the output is the value
-of the expression. The box can be moved around the screen.
-The user can draw lines linking any output to any input, but only one
-output can be linked to a given input.
-
-There are special boxes for plotting, Sigma (sum), and Pi (product).
-The Sigma and Pi boxes have range inputs <min, step, max>,
-the step variable output, the sum or product output,
-and one input (the summand or multiplicand).
-The plot may want a step count rather than a step increment (or just omit).
-There may be separate plot boxes for cartesian and polar plots.
 
 Dependency loops: Not that simple, since plot, Sigma, and Pi control
 their inputs with their outputs. Although we could make the range part
 separate. But what about nested Sigma and Pi, where a one iteration
 variable is another's limit?
-Why do we want the range to be part of the boxes?
 
-****************************************************************/
-/****************************************************************
 Use big absolute position canvas with lines positioned within it.
 Boxes are absolute position as well.
 
@@ -165,15 +105,8 @@ port labeled with the math expression itself. Might need an expanded version of
 ia.html's input method, perhaps a list of allowable functions?
 If it's just a function name, the input and output ports don't really need to be labeled.
 Constant expressions don't have any input ports.
-Allowable unary ops and functions:
- - abs sgn floor ceiling round exp expm1 ln ln1p ! [n! = gamma(n+1)] 
- sin cos tan csc sec cot asin acos atan
- sinh cosh tanh asinh acosh atanh
-How many of these are not built in to javascript?
 
 Dragging boxes from variable portion just moves things, but deletes if dragged to edge
-
-Constant boxes are like input elements with variable width; can include constant expressions?
 
 A box is an object prototype with a function to draw itself.
 Each box has one or more ports, for inputs and outputs.
@@ -202,11 +135,7 @@ Plot box that takes coordinated x and y inputs, or r and theta inputs...
   Even if so, can be overridden by user action.
 May want reset button to start sweep over.
 
-When a box is moved within the variable portion, lines to its ports stay connected.
-
 If we allow loops, that could solve systems of equations?
-
-A plot box could have x,y and r,theta inputs ? Range inputs ?
 
 Is there enough real estate?
 
@@ -901,6 +830,7 @@ function algkey(event) {    // key down
 }
 
 function dokey(k) {
+  var nv;
   var o;
   const x='\b\x7f\r\n'.indexOf(k);
   if (x >= 0) {
@@ -916,12 +846,14 @@ function dokey(k) {
       create();
       clear();
     }
+  } else if ((nv='SP'.indexOf(k)) >= 0) {
+    return createsp(nv);
   } else if ('0' <= k && k <= '9') {
     expr.push(k);
   } else if ('ehijnpqrstuvwxyz'.indexOf(k) >= 0) {
     o = document.getElementsByClassName('var')[0];
     if (enabled(o)) expr.push(expr2expression[k] || k);
-  } else if ('abcdfglABCDEFGSV'.indexOf(k) >= 0) {
+  } else if ('abcdfglABCDEFG$|'.indexOf(k) >= 0) {
     o = document.getElementById(expr2expression[k].trim());
     if (enabled(o)) expr.push(k);
   } else if (k == '+') {
@@ -1002,17 +934,17 @@ function bp(event) {    // button pressed
   parse();
 }
 
-function createsp(o) {
+function createsp(nv) {
   const box = new Box(200,200,'pq');
   spboxes.push(boxes.pop());
   const iports = box.iports;
   const oport = box.oport;
   const e = box.element;
-  box.nullvalue = 0 + (o.id == 'prod');
+  box.nullvalue = nv;
   iports[0].element.innerHTML = iports[0].label = 'k';
   iports[1].element.innerHTML = iports[1].label = 'j';
   MathJax.typesetClear([e]);
-  e.firstChild.innerHTML = '\\[\\'+o.id+'_{n=j}^k z\\]';
+  e.firstChild.innerHTML = '\\[\\'+(nv?'prod':'sum')+'_{n=j}^k z\\]';
   MathJax.typeset([e]);
   box.js = '';
   e.style.height = e.clientHeight + 2*portheight + 'px';
@@ -2023,8 +1955,8 @@ span {
 <button id='mod' class='op binary' title='modulo (%)' key='%'>mod</button>
 <button id='powup' class='op' title='exponentiate (^)' key='^'>&uparrow;</button>
 <button id='powdn' class='op closer' title='end exponent (\)' key='\\'>&downarrow;</button>
-<button id='sgn' class='op' title='signum (S)' key='S'>sgn</button>
-<button id='abs' class='op' title='absolute value (V)' key='V'>abs</button>
+<button id='sgn' class='op' title='signum ($)' key='$'>sgn</button>
+<button id='abs' class='op' title='absolute value (|)' key='|'>abs</button>
 <button id='oparen' class='op' key='('>(</button>
 <button id='cparen' class='op closer' key=')'>)</button>
 <br>
@@ -2049,8 +1981,8 @@ span {
 <button id='debugger' onclick='showhidenext(this)' title='show/hide javascript code for current math expression'>Show</button>
 <p id='debug'></p>  
 <br>
-<button id='sum' onclick='createsp(this)'>&Sigma;</button>
-<button id='prod' onclick='createsp(this)'>&Pi;</button>
+<button id='sum' title='Make a Sum Box (S)' onclick='createsp(0)'>&Sigma;</button>
+<button id='prod' title='Make a Product Box (P)' onclick='createsp(1)'>&Pi;</button>
 <br>
 <p id='value'></p>
 </div>
@@ -2074,8 +2006,8 @@ span {
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
-<table><tbody><tr><td>%</td><td>S</td><td>V</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
-<td>mod</td><td>sgn</td><td>|abs|</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
+<table><tbody><tr><td>%</td><td>$</td><td>|</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td><td>S</td><td>P</td></tr>
+<td>mod</td><td>sgn</td><td>|abs|</td><td><i>&#x03b8;</i></td><td><i>&#x03c0;</i></td><td><i>&#x03c4;</i></td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td><td>&#x03a3;</td><td>&#x03a0;</td></tr></tbody></table>
 <br>
 <table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
 <tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
