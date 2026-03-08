@@ -50,8 +50,8 @@ const expr2expression = {    // non-identity conversions from internal string
   'E' : ' exp',
   'F' : ' asinh',
   'G' : ' acosh',
-  'S' : ' sgn',
-  'V' : ' abs',
+  '$' : ' sgn',
+  '|' : ' abs',
   'a' : ' atan',
   'b' : ' sin',
   'c' : ' cos',
@@ -303,7 +303,7 @@ function dokey(k) {
   } else if ('ehijpqrstuvwxyz'.indexOf(k) >= 0) {
     o = document.getElementsByClassName('var')[0];
     if (enabled(o)) expr.push(expr2expression[k] || k);
-  } else if ('abcdfglABCDEFGSV'.indexOf(k) >= 0) {
+  } else if ('abcdfglABCDEFG$|'.indexOf(k) >= 0) {
     o = document.getElementById(expr2expression[k].trim());
     if (enabled(o)) expr.push(k);
   } else if (k == '+') {
@@ -1538,8 +1538,8 @@ span {
 <button id='mod' class='op binary' title='modulo (%)' key='%'>mod</button>
 <button id='powup' class='op' title='exponentiate (^)' key='^'>&uparrow;</button>
 <button id='powdn' class='op closer' title='end exponent (\)' key='\\'>&downarrow;</button>
-<button id='sgn' class='op' title='signum (S)' key='S'>sgn</button>
-<button id='abs' class='op' title='absolute value (V)' key='V'>abs</button>
+<button id='sgn' class='op' title='signum ($)' key='$'>sgn</button>
+<button id='abs' class='op' title='absolute value (|)' key='|'>abs</button>
 <button id='oparen' class='op' key='('>(</button>
 <button id='cparen' class='op closer' key=')'>)</button>
 <br>
@@ -1596,7 +1596,7 @@ span {
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
-<table><tbody><tr><td>%</td><td>S</td><td>V</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
+<table><tbody><tr><td>%</td><td>$</td><td>|</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td></tr>
 <td>mod</td><td>sgn</td><td>|abs|</td><td>&#x03b8;</td><td>&#x03c0;</td><td>&#x03c4;</td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td></tr></tbody></table>
 <p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored. Mathematical expressions can be dragged between boxes. Variables are defined by the mathematical expressions in their correspondingly labeled boxes. If any variable is defined using itself, it cannot be used for plotting.</p>
 <p>Depressing a PLOT button plots the mathematical expression to its left:</p>
