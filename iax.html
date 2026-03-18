@@ -719,7 +719,7 @@ function Port(box,x,y,name,value) {
 			    // if an input port, the corresponding output port
 			    //  or the default output port if not connected
   if (box) {
-    var e = box.element;
+    const b = box.element;
     var p = this.element = document.createElement('p');
     if (value) {
       p.className = 'port';
@@ -733,35 +733,35 @@ function Port(box,x,y,name,value) {
       p.style.top = y+'px';
     }
     p.jsobject = this;
-    e.appendChild(p);
+    b.appendChild(p);
   }
 }
 
 Port.prototype.delete = function () {    // called only from box.delete()
-  const e = this.element;
+  const b = this.element;
   for (const l of lines) {
     if (l.iport == this || l.oport == this) {
       lines.delete(l);
     }
   }
-  e || e.remove();
+  b || b.remove();
 }
 
 defaultoport = new Port();
 const portheight = 20;
 
 function Box(x,y,math) {
-  const e = this.element = document.createElement('div');
-  e.className = math ? 'box' : 'pseudobox';
-  e.style.left = (this.x = (x || 0))+'px';
-  e.style.top = (this.y = (y || 0))+'px';
-  boxesdiv.appendChild(e);
+  const b = this.element = document.createElement('div');
+  b.className = math ? 'box' : 'pseudobox';
+  b.style.left = (this.x = (x || 0))+'px';
+  b.style.top = (this.y = (y || 0))+'px';
+  boxesdiv.appendChild(b);
   if (math) {
-    e.innerHTML = "<p class='math'>\\("+math+"\\)</p>"
-    MathJax.typeset([e]);
+    b.innerHTML = "<p class='math'>\\("+math+"\\)</p>"
+    MathJax.typeset([b]);
     var v = variables(math);    // input port names
     var h = portheight*Math.max(1,v.length);
-    e.style.height = h+10+'px';
+    b.style.height = h+10+'px';
     this.oport = new Port(this,0,h/2-24);	// output port
     this.iports = [];		// input ports
     this.js = expr2js(math);	// function that maps inputs to output
@@ -772,7 +772,7 @@ function Box(x,y,math) {
       var p = new Port(this,0,portheight*i-13,v[i],defaultoport);
       this.iports.push(p);
     }
-    e.jsobject = this;
+    b.jsobject = this;
     boxes.push(this);
   }
 }
@@ -936,15 +936,15 @@ function createsp(nv) {
   spboxes.push(boxes.pop());
   const iports = box.iports;
   const oport = box.oport;
-  const e = box.element;
+  const b = box.element;
   box.nullvalue = nv;
   iports[0].element.innerHTML = iports[0].label = 'k';
   iports[1].element.innerHTML = iports[1].label = 'j';
-  MathJax.typesetClear([e]);
-  e.firstChild.innerHTML = '\\[\\'+(nv?'prod':'sum')+'_{n=j}^k z\\]';
-  MathJax.typeset([e]);
+  MathJax.typesetClear([b]);
+  b.firstChild.innerHTML = '\\[\\'+(nv?'prod':'sum')+'_{n=j}^k z\\]';
+  MathJax.typeset([b]);
   box.js = '';
-  e.style.height = e.clientHeight + 2*portheight + 'px';
+  b.style.height = b.clientHeight + 2*portheight + 'px';
   iports[1].element.style.top =
     parseInt(iports[1].element.style.top) + portheight + 'px';
   iports[0].element.style.top = 
