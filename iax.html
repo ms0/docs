@@ -169,7 +169,7 @@ unary ops/fcns:
   floor ceiling 
 range ports:
   start increment end speed?
-sum (accumulate) and product (accumulate)
+sum (accumulate) and product (accumulate) and integral (accumulate)
   initialvalue (defaults to 0 or 1, repsectively), input, output, reset
 plot ports
   minx, maxx, miny, maxy, x, y [NOTE: must store all x,y points until reset
@@ -613,7 +613,7 @@ function ev(js) {
 }
 
 function spevaluate() {   // reevaluate special boxes
-  var i,j,k,z;
+  var a,i,j,k,n,z;
   var box,iports;
   evaluate();    // for j and k inputs
   for (i = 0; i < spboxes.length; i++) {
@@ -621,24 +621,39 @@ function spevaluate() {   // reevaluate special boxes
     iports = box.iports;
     j = iports[1].value.value;
     k = iports[0].value.value;
-    if (Number.isInteger(j) && Number.isInteger(k)) {
-      const nv = box.nullvalue;    // 0 for sum, 1 for product
-      var a = nv;
-      var n;
-      for (n = j; n <= k; n++) {
-	box.nport.value = n;
+    const nv = box.nullvalue;    // 0 for sum, 1 for product, 2 for integral
+    if (nv < 2) {
+      if (Number.isInteger(j) && Number.isInteger(k)) {
+	a = nv;
+	for (n = j; n <= k; n++) {
+	  box.nport.value = n;
+	  evaluate();
+	  if ((v = iports[2].value.value) == undefined) {
+	    a = undefined;
+	    break;
+	  }
+	  if (nv) {
+	    a *= v;
+	  } else {
+	    a += v;
+	  }
+	}
+	box.oport.value = a;
+	evaluate();
+      }
+    } else if (Number.isFinite(j) && Number.isFinite(k)) {
+      a = 0;
+      var d = (k-j)/Intervals;
+      for (n = 0; n <= Intervals; n++) {
+	box.nport.value = j+d*n;
 	evaluate();
 	if ((v = iports[2].value.value) == undefined) {
 	  a = undefined;
 	  break;
 	}
-	if (nv) {
-	  a *= v;
-	} else {
-	  a += v;
-	}
+	a += n&1 ? 4*v : n&(Intervals-1) ? 2*v : v;
       }
-      box.oport.value = a;
+      box.oport.value = a*d/3;
       evaluate();
     }
   }
@@ -843,7 +858,7 @@ function dokey(k) {
       create();
       clear();
     }
-  } else if ((nv='SP'.indexOf(k)) >= 0) {
+  } else if ((nv='SPI'.indexOf(k)) >= 0) {
     return createsp(nv);
   } else if ('0' <= k && k <= '9') {
     expr.push(k);
@@ -931,6 +946,10 @@ function bp(event) {    // button pressed
   parse();
 }
 
+const SPI = ['sum_{n=j}^k z','prod_{n=j}^k z','int_{a}^bz\\:dx'];
+const Intpow = 10;    // log2 number of integral intervals
+const Intervals = 2**Intpow;
+
 function createsp(nv) {
   const box = new Box(200,200,'pq');
   spboxes.push(boxes.pop());
@@ -938,10 +957,10 @@ function createsp(nv) {
   const oport = box.oport;
   const b = box.element;
   box.nullvalue = nv;
-  iports[0].element.innerHTML = iports[0].label = 'k';
-  iports[1].element.innerHTML = iports[1].label = 'j';
+  iports[0].element.innerHTML = iports[0].label = nv<2 ? 'k' : 'b';
+  iports[1].element.innerHTML = iports[1].label = nv<2 ? 'j' : 'a';
   MathJax.typesetClear([b]);
-  b.firstChild.innerHTML = '\\[\\'+(nv?'prod':'sum')+'_{n=j}^k z\\]';
+  b.firstChild.innerHTML = '\\[\\'+SPI[nv]+'\\]';
   MathJax.typeset([b]);
   box.js = '';
   b.style.height = b.clientHeight + 2*portheight + 'px';
@@ -954,7 +973,7 @@ function createsp(nv) {
   iports.push(new Port(box,0,0,'z',defaultoport));
   iports[2].element.style = 'bottom:-18px;right:10px;';
   iports[2].element.classList.add('sport');
-  const nport = box.nport = new Port(box,0,0,'n',0);
+  const nport = box.nport = new Port(box,0,0,'nnx'[nv],0);
   nport.element.style = 'bottom:-18px;left:10px;font-style:italic';  
   nport.element.classList.add('sport');
 }
@@ -1980,6 +1999,7 @@ span {
 <br>
 <button id='sum' title='Make a Sum Box (S)' onclick='createsp(0)'>&Sigma;</button>
 <button id='prod' title='Make a Product Box (P)' onclick='createsp(1)'>&Pi;</button>
+<button id='integral' title='Make an Integral Box (I)' onclick='createsp(2)'>&int;</button>
 <br>
 <p id='value'></p>
 </div>
@@ -2003,13 +2023,13 @@ span {
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
-<table><tbody><tr><td>%</td><td>$</td><td>|</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td><td>S</td><td>P</td></tr>
-<td>mod</td><td>sgn</td><td>|abs|</td><td><i>&#x03b8;</i></td><td><i>&#x03c0;</i></td><td><i>&#x03c4;</i></td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td><td>&#x03a3;</td><td>&#x03a0;</td></tr></tbody></table>
+<table><tbody><tr><td>%</td><td>$</td><td>|</td><td>h</td><td>i</td><td>j</td><td>-</td><td>*</td><td>/</td><td>^</td><td>\</td><td>S</td><td>P</td><td>I</td></tr>
+<td>mod</td><td>sgn</td><td>|abs|</td><td><i>&#x03b8;</i></td><td><i>&#x03c0;</i></td><td><i>&#x03c4;</i></td><td>&#x2212;</td><td>&#x00d7;</td><td>&#x00f7;</td><td>&#x2191;</td><td>&#x2193;</td><td>&#x03a3;</td><td>&#x03a0;</td><td>&#x222b;</td></tr></tbody></table>
 <br>
 <table><tbody><tr><td>E</td><td>l</td><td>b</td><td>c</td><td>d</td><td>f</td><td>g</td><td>a</td><td>B</td><td>C</td><td>D</td><td>F</td><td>G</td><td>A</td></tr>
 <tr><td>exp</td><td>log</td><td>sin</td><td>cos</td><td>tan</td><td>asin</td><td>acos</td><td>atan</td><td>sinh</td><td>cosh</td><td>tanh</td><td>asinh</td><td>acosh</td><td>atanh</td></tr></tbody></table>
 <p>Buttons that are grayed out, and their keyboard equivalents, are not valid and are ignored.</p>
-<p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. The sum and product boxes created with the &Sigma; and &Pi; buttons, respectively, have an additional output port labeled <i>n</i> for the index. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. (Click and drag a port to the to-be-connected port.) Only one output port can be connected to any input port. Hovering over a port shows its value. If you are on a touchscreen-only device, you might want to enable a virtual touchpad, or use <a href='ia.html'>this more touchscreen-friendly interface</a>.</p>
+  <p>Once you&rsquo;ve entered an expression, click Make Box or press Enter to create a box that you can drag around. Boxes can be deleted by dragging them to the top or left edge. Each box has zero or more labeled input ports, one for each variable in its math expression, and one output port shown as an arrowhead. The sum and product boxes created with the &Sigma; and &Pi; buttons, respectively, have an additional output port labeled <i>n</i> for the index. The integral box created with the &int; button has an additional output port labeled <i>x</i> for the index. Variable names exist only to label the ports; each box has its own set of variables and there is no correlation between boxes. Input ports can be connected to output ports by drawing a line between them. (Click and drag a port to the to-be-connected port.) Only one output port can be connected to any input port. Hovering over a port shows its value. If you are on a touchscreen-only device, you might want to enable a virtual touchpad, or use <a href='ia.html'>this more touchscreen-friendly interface</a>.</p>
 <p>The plot area has input boxes for minimum and maximum <i>x</i> and <i>y</i> values. Just to its left are special input ports for <i>x</i> and <i>y</i> coordinates. On the left edge of the page, there are three special output ports, labeled <i>t</i>, <i>x</i>, and <i>y</i>. They sweep from &minus;1 to 1, from minimum to maximum <i>x</i>, and from minimum to maximum <i>y</i>, respectively.</p>
 <p>If the special input ports have values, a plot is shown. New plots are triggered whenever a new connection is made or when any coordinate limit is changed.</p>
 <p>For example, to create a polar plot of \(\sin 5\theta\), create a box with that expression; create three other boxes: \(\pi(t+1)\) to scan from 0 through &tau; = 2&pi;, and \(r\cos\theta\) and \(r\sin\theta\) to convert polar coordinates to Cartesian coordinates; connect the outputs of the last two to the special input ports <i>x</i> and <i>y</i> respectively; connect their <i>r</i> ports to the output port of \(\sin 5\theta\); and finally, connect the scanner&rsquo;s <i>t</i> port to the special <i>t</i> output port and its output port to all three <i>&theta;</i> ports. Using your keyboard or the paste facility, you can make the four boxes by entering or pasting i(t+1)&crarr;b(5h)&crarr;rc(h)&crarr;rb(h)&crarr;, where &crarr; represents the Enter key or a carriage return and/or line feed character.</p>
