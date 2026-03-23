@@ -296,7 +296,8 @@ function pseudoport(x,y,label) {
 
 function updateLimits(event) {
   document.body.className = 'waiting';
-  plot();
+  document.activeElement.blur();
+  setTimeout(plot,1);
 }
 
 function clean(port) {    // remove any line going to this input port
@@ -551,6 +552,7 @@ function variables(m) {
 }
 
 function plot() {
+  document.body.className = '';
   const x0 = document.getElementById('lft').valueAsNumber;
   const x1 = document.getElementById('rgt').valueAsNumber;  
   const y0 = document.getElementById('bot').valueAsNumber;
@@ -569,6 +571,7 @@ function plot() {
     pcx.fillText("Range Error",side/2,side/2);
     throw new Error('Low Limits Must Be Less Than High Limits');
   }
+  if (xport.value == defaultoport || yport.value == defaultoport) return;
   pcx.strokeStyle='gray';
   if (x0 < 0 && 0 < x1) {
     pcx.beginPath();
@@ -609,7 +612,6 @@ function plot() {
     }
   }
   pcx.stroke();
-  document.body.className = '';
 }
 
 function isconnected(port) {    // check if output port is connected
