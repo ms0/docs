@@ -199,7 +199,7 @@ var pcx;
 const side = 513;
 
 function init(o) {    // initialize the world
-  body = o;
+  body = document.body;
   mstate = 0;
   o.addEventListener('pointerdown',mdnhandler);
   o.addEventListener('pointermove',mmvhandler);
@@ -225,8 +225,8 @@ function init(o) {    // initialize the world
   expression.innerHTML = '';
   parsetable = {};
   exprbuttons = [];
-  document.body.addEventListener('paste',paste);
-  document.body.addEventListener('keydown',algkey);
+  body.addEventListener('paste',paste);
+  body.addEventListener('keydown',algkey);
   document.getElementById('create').addEventListener('click',create);
   var i;
   var b,c;
@@ -295,8 +295,12 @@ function pseudoport(x,y,label) {
 }
 
 function updateLimits(event) {
-  document.body.className = 'waiting';
-  document.activeElement.blur();
+  body.className = 'waiting';
+  const xy = getCoords(event.target);
+  var w = document.getElementById('waiter');
+  w.style.left = xy.x+'px';
+  w.style.top = xy.y-18+'px';
+  w.style.visibility = 'visible';
   setTimeout(plot,1);
 }
 
@@ -441,7 +445,7 @@ function addline(oport,iport) {
   drawlines();
   i.value = o;
   valueobj.innerHTML = o.value;
-  document.body.className = 'waiting';
+  body.className = 'waiting';
   setTimeout(plot,1);
 }
 
@@ -552,7 +556,7 @@ function variables(m) {
 }
 
 function plot() {
-  document.body.className = '';
+ try {
   const x0 = document.getElementById('lft').valueAsNumber;
   const x1 = document.getElementById('rgt').valueAsNumber;  
   const y0 = document.getElementById('bot').valueAsNumber;
@@ -612,6 +616,13 @@ function plot() {
     }
   }
   pcx.stroke();
+ }
+ catch (error) {
+   throw error;
+ } finally {
+   body.className = '';
+   document.getElementById('waiter').style.visibility = 'hidden';
+ }
 }
 
 function isconnected(port) {    // check if output port is connected
@@ -1667,7 +1678,7 @@ function showhelp(s) {
 }		      
 
 function showpopup(o,s) {
-  var b = document.body.getClientRects()[0];
+  var b = body.getClientRects()[0];
   var r = o.getClientRects()[0];
   o = document.getElementById(s);
   o.style.display='block';
@@ -1687,6 +1698,15 @@ body {
 }
 body.waiting * {
   cursor:wait!important;
+}
+#waiter {
+  position:absolute;
+  top:0px;
+  left:0px;
+  visibility:hidden;
+  font-size:18px;
+  color:blue;
+  background-color:white;
 }
 #canvas {
   position:absolute;
@@ -2043,6 +2063,7 @@ span {
   </div>
 </div>
 <canvas id='canvas'></canvas>
+<p id='waiter'>COMPUTING</p>
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
