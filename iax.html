@@ -271,7 +271,7 @@ function initplot() {
   b = document.getElementsByTagName('input');
   for (i=0; i < b.length; i++) {
     b[i].step=.125;
-    b[i].addEventListener('change',updateLimits);
+    b[i].addEventListener('change',plot);
   }
   portt = pseudoport(0,400,'t');
   portx = pseudoport(0,440,'x');
@@ -285,6 +285,7 @@ function initplot() {
     function (child) {child.remove();});
   xport = box.iports[0];
   yport = box.iports[1];
+  plotaxes();
 }
 
 function pseudoport(x,y,label) {
@@ -294,14 +295,16 @@ function pseudoport(x,y,label) {
   return port;
 }
 
-function updateLimits(event) {
+function plot(event) {
+  plotaxes();
+  if (xport.value == defaultoport || yport.value == defaultoport) return;
   body.className = 'waiting';
-  const xy = getCoords(event.target);
-  var w = document.getElementById('waiter');
-  w.style.left = xy.x+'px';
-  w.style.top = xy.y-18+'px';
+  const c = getCoords(document.getElementById('plotarea'));
+  const w = document.getElementById('waiter');
+  w.style.left = c.x+side/2-150+'px';
+  w.style.top = c.y+side/2-82+'px';
   w.style.visibility = 'visible';
-  setTimeout(plot,1);
+  setTimeout(graph,1);
 }
 
 function clean(port) {    // remove any line going to this input port
@@ -445,8 +448,7 @@ function addline(oport,iport) {
   drawlines();
   i.value = o;
   valueobj.innerHTML = o.value;
-  body.className = 'waiting';
-  setTimeout(plot,1);
+  plot();
 }
 
 function muphandler(e) {    // mouse up (touchend)
@@ -555,19 +557,11 @@ function variables(m) {
   return Array.from(s).sort();
 }
 
-function plot() {
- try {
+function plotaxes() {
   const x0 = document.getElementById('lft').valueAsNumber;
   const x1 = document.getElementById('rgt').valueAsNumber;  
   const y0 = document.getElementById('bot').valueAsNumber;
   const y1 = document.getElementById('top').valueAsNumber;  
-  var t;
-  var k;    // counter
-  var i,j;
-  var hi,hj;
-  var oi,oj;    // old values to decide between moveTo and lineTo
-  var d;    // distance between old and new points
-  var x,y;
   pcx.clearRect(0,0,side,side);
   if (!(x0<x1 && y0<y1)) {
     pcx.font = '50px Arial';
@@ -575,7 +569,6 @@ function plot() {
     pcx.fillText("Range Error",side/2,side/2);
     throw new Error('Low Limits Must Be Less Than High Limits');
   }
-  if (xport.value == defaultoport || yport.value == defaultoport) return;
   pcx.strokeStyle='gray';
   if (x0 < 0 && 0 < x1) {
     pcx.beginPath();
@@ -589,6 +582,21 @@ function plot() {
     pcx.lineTo(side,(side-1)*y1/(y1-y0));
     pcx.stroke();
   }
+}
+
+function graph() {
+ try {
+  const x0 = document.getElementById('lft').valueAsNumber;
+  const x1 = document.getElementById('rgt').valueAsNumber;  
+  const y0 = document.getElementById('bot').valueAsNumber;
+  const y1 = document.getElementById('top').valueAsNumber;  
+  var t;
+  var k;    // counter
+  var i,j;
+  var hi,hj;
+  var oi,oj;    // old values to decide between moveTo and lineTo
+  var d;    // distance between old and new points
+  var x,y;
   pcx.strokeStyle='black';
   pcx.beginPath();
   for (k=0; k<=2048; ++k) {
@@ -1704,7 +1712,8 @@ body.waiting * {
   top:0px;
   left:0px;
   visibility:hidden;
-  font-size:18px;
+  opacity:.5;
+  font-size:50px;
   color:blue;
   background-color:white;
 }
@@ -2063,7 +2072,7 @@ span {
   </div>
 </div>
 <canvas id='canvas'></canvas>
-<p id='waiter'>COMPUTING</p>
+><p id='waiter'>COMPUTING</p>
 <div id='help' class='popup' onclick='this.style.display="none";'>
 <h2>Entering and plotting mathematical expressions</h2>
 <p>Use the buttons and/or your keyboard to enter mathematical expressions. Special keyboard equivalents:</p>
