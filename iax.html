@@ -647,6 +647,11 @@ function ev(js) {
 function spevaluate() {   // reevaluate special boxes
   var a,c,i,j,k,n,z;
   var box,iports;
+  for (i = 0; i < spboxes.length; i++) {
+    box = spboxes[i];
+    box.oport.value = undefined;
+    box.nport.value = undefined;
+  }
   evaluate();    // for j and k inputs
   for (i = 0; i < spboxes.length; i++) {
     box = spboxes[i];
