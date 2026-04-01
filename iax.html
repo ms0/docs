@@ -1141,12 +1141,13 @@ function parse() {    // parse expression and return in math element as latex st
   setkeys(parstate);
   while ((i = lastopen.pop()) != undefined) m += closure[i];
   m += '\\)';
-  document.getElementById('debug').innerHTML = expr2js(m.slice(2,-2));
+  document.getElementById('debug').innerHTML = s = expr2js(m.slice(2,-2));
   MathJax.typesetClear([document.getElementById('mathbox')]);
   document.getElementById('math').innerHTML = m;
   MathJax.typeset(['#math']);
   o = document.getElementById('mathbox');
   if (o.scrollWidth > o.clientWidth) o.scrollLeft = o.scrollWidth-o.clientWidth;
+  document.getElementById('create').disabled = !s;
 }
 
 function setkeys(state) {
