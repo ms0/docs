@@ -799,7 +799,10 @@ function Port(box,x,y,name,value) {
 Port.prototype.delete = function () {    // called only from box.delete()
   const b = this.element;
   for (const l of lines) {
-    if (l.iport == this || l.oport == this) {
+    if (l.iport == this) {
+      lines.delete(l);
+    } else if (l.oport == this) {
+      l.iport.value = defaultoport;
       lines.delete(l);
     }
   }
