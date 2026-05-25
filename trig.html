@@ -34,6 +34,7 @@ var yoff = radius/Math.sin(angle);
 var cheight = yoff+radius+2*cwr;
 var alpha = Math.PI/5;
 var beta = Math.PI/3;
+var mradius = 80;
 
 var twidth;
 var theight;
@@ -43,6 +44,8 @@ var pwidth;
 var pheight;
 var mwidth;
 var mheight;
+var mleft;
+var mright;
 
 var maxangle;    // for plots
 
@@ -79,7 +82,6 @@ function init() {
   cvs.height = sheight;
   cts = cvs.getContext('2d');
   drawsins();
-  mradius = 80;
   mheight = mradius*Math.cos(alpha);
   mleft = mradius*Math.sin(alpha);
   mright = mheight*Math.tan(beta);
