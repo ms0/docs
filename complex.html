@@ -24,13 +24,17 @@ var x0 = 0;    // clicked x
 var y0 = 0;    // clicked y
 
 /****************************************************************
-initially, glued=0, point displayed on move
+Mouse operation:
+initially, glued=1, point displayed on move
   click causes point to be fixed, cursor crosshair
 leave resets to op=0, cursor none, glued set to 0
  clicking add span sets op=1, glued=0
  clicking mul span sets op=2, glued=0
  then, click causes point to be fixed, glued=1, but can select other point
  clicking on realized span, sets showrtheta to 2, op=0, glued=0 and redisplays x0,y0
+Touch operation (no hover):
+ touchstart,touchmove--sets and moves first (glued==0) or second (glued==1) point
+ touchend,touchcancel--toggles glued if op is nonzero
 ****************************************************************/
 
 function init() {
@@ -42,10 +46,36 @@ function init() {
   cvs.addEventListener('mousemove',showpoint);
   cvs.addEventListener('click',glue);
   cvs.addEventListener('mouseleave',leave);
+  cvs.addEventListener('touchstart',tsm);
+  cvs.addEventListener('touchmove',tsm);
+  cvs.addEventListener('touchend',tend);
+  cvs.addEventListener('touchcancel',tend);
   drawrealline();
   showrtheta = 0;
   op = 0;
   glued = 1;
+}
+
+function tsm(event) {
+  event.preventDefault();
+  var touches = event.touches;
+  drawrealline();
+  var rect = event.target.getBoundingClientRect();
+  var touch = touches[0];
+  var x = touch.clientX-rect.x-cwidth/2;
+  var y = touch.clientY-rect.y-cheight/2;
+  if (!op || !glued) {
+    drawpoint(x0=x,y0=y);
+  } else {
+    op == 1 ? drawsum(x0,y0,x,y) : drawproduct(x0,y0,x,y);
+  }
+}
+
+function tend(event) {
+  event.preventDefault();
+  if (op) {
+    glued ^= 1;
+  }
 }
 
 function glue(event) {
@@ -188,6 +218,7 @@ canvas {
   display:block;
   margin:0 auto;
   cursor:none;
+  touch-action:none;
 }
 body {
   max-width:820px;
