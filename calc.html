@@ -11,14 +11,16 @@ var cwidth;
 var cheight = 70;
 var cinheight = 50;
 
-var cvp;
-var ctp;
+var cvp;    // canvas for plot
+var ctp;    // context for plot
 
 function init() {
   cwidth=document.body.offsetWidth;
   initplot();
-  drawsine();
-  
+  drawsine(ctp);
+  initarea();
+  drawsine(cta);
+  drawarea(cta,function(x){return Math.sin(x);},areaa=0,areab=cwidth/8);
 }
 
 function initplot() {
@@ -41,6 +43,29 @@ function plot(ctx,f) {
   ctx.stroke();
 }
 
+function drawarea(ctx,f,a,b) {
+  for (var x=a; ++x<=b; ) {
+    var y = -cinheight/2*f(x*2/cinheight);
+    ctx.strokeStyle = y < 0 ? 'lightgreen' : 'pink'; 
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'black';
+  ctx.beginPath();
+  ctx.moveTo(a,-cheight/2);
+  ctx.lineTo(a,cheight/2-10);
+  ctx.moveTo(b,-cheight/2);
+  ctx.lineTo(b,cheight/2-10);
+  ctx.lineWidth = .5;
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.fillStyle = 'black';
+  ctx.fillText('a',a,cheight/2);
+  ctx.fillText('b',b,cheight/2);
+}
+
 function axes(ctx) {
   var w = ctx.canvas.width;
   var h = ctx.canvas.height;
@@ -55,15 +80,15 @@ function axes(ctx) {
   ctx.beginPath();
   ctx.moveTo(-w,0);
   ctx.lineTo(w,0);
-  ctx.moveTo(0,-h);
-  ctx.lineTo(0,h);
+//  ctx.moveTo(0,-h);
+//  ctx.lineTo(0,h);
   ctx.stroke();
   ctx.lineWidth=1;
 }
 
-function drawsine() {
-  axes(ctp);
-  plot(ctp,function(x){return Math.sin(x);})
+function drawsine(ctx) {
+  axes(ctx);
+  plot(ctx,function(x){return Math.sin(x);})
 }
 
 var timer;
@@ -85,7 +110,7 @@ function showtan(event) {
   }
   var m;
   var b;
-  drawsine();
+  drawsine(ctp);
   ctp.beginPath();
   var y = -cinheight/2*Math.sin(x*2/cinheight);
   if (!delta) {
@@ -111,7 +136,7 @@ function showtan(event) {
 
 function ski() {
   timer = clearInterval(timer);
-  drawsine();
+  drawsine(ctp);
   x = -cwidth/2;
   timer = setInterval(moveball,25);
 }
@@ -129,13 +154,51 @@ function moveball() {
   var u = 1/h;
   var v = t/h;
   var y = -cinheight/2*Math.sin(x*2/cinheight)-u*r;
-  drawsine();
+  drawsine(ctp);
   drawball(x+v*r,y);
   var E = E0 + g*(y+cinheight/2+r);
   x += Math.sqrt(E)*u/2;
   if (x > cwidth/2+2*r) {
     timer=clearInterval(timer);
   }
+}
+
+/* show area from given starting point to given ending point
+   show approximation using trapezoid rule with given delta
+   plot integral value and approximated value
+   use simpson's rule, use rectangle rule?
+*/
+
+var cva;    // canvas for area
+var cta;    // context for area
+var areaa;  // beginning of area
+var areab;  // end of area
+
+function initarea() {
+  cva = document.getElementById('integral');
+  cva.addEventListener('pointerdown',movearea);
+  cva.addEventListener('pointermove',movearea);
+  cta = cva.getContext('2d');
+  cva.width = cwidth;
+  cva.height = cheight;
+  cta.setTransform(1,0,0,1,0,0);
+  cta.clearRect(0,0,cwidth,cheight);
+  cta.translate(cwidth/2,cheight/2);
+  cta.font = 'italic 10px Times, serif';
+  cta.textAlign = 'center';
+}
+
+function movearea(event) {
+  if (event.pointerType == 'mouse' && !event.buttons) return;
+  var rect = event.target.getBoundingClientRect();
+  x = event.clientX-rect.x-cwidth/2;
+  if (Math.abs(areaa-x) < Math.abs(areab-x)) {
+    areaa = x;
+  } else {
+    areab = x;
+  }
+  drawsine(cta);
+  drawarea(cta,function(x){return Math.sin(x);},areaa,areab);
 }
 
 function showpopup(o,s) {
@@ -169,7 +232,12 @@ h2 {
 canvas {
   display:block;
   margin:0 auto;
+}
+#plot {
   cursor:crosshair;
+}
+#integral {
+  cursor:col-resize;
 }
 .popup {
   background-color:white;
@@ -209,7 +277,7 @@ p.top {
 </p>
 <h1>Fi and Lu conquer calculus</h1>
 <p>Fi liked the pretty curves that she saw when tackling trigonometry. She imagined <span onclick='ski()'>skiing</span> on those curves, speeding up on the downslopes and slowing down on the upslopes. Lu realized that the steepness of the slopes could be measured by looking at nearby points. Mom said that this was called <i>differentiation</i>. &ldquo;You can draw a tangent to the curve at a point&mdash;a straight line that just touches the curve at that point. The slope of that tangent is just how much it goes up for each unit it goes forward. You can approximate the tangent by taking two points on the curve very close to each other and drawing a line between them. As the two points get closer together, they provide a better approximation to the tangent. (Click the plot below.)</p>
-<canvas id='plot'></canvas>    
+<canvas id='plot'></canvas>
 <p>&ldquo;For a function \(f(x)\), we can define the derivative of \(f(x)\) with respect to \(x\), the function that gives the slope of the tangent to \(f(x)\) at each point \(x\), as
 \[\frac{df(x)}{dx} = \lim_{\delta\rightarrow 0} \frac{f(x+\delta)-f(x)}{\delta}\]
 &ldquo;This is a standard notation for derivative, but it&rsquo;s a bit strange. The \(d\) should not be considered as a separate entity, but as paired with the thing that follows it. And that&rsquo;s why the derivative of a derivative, called the <i>second derivative</i> is written as \[\frac{d^2f(x)}{dx^2}\]
@@ -256,6 +324,14 @@ but it&rsquo;s fairly clear that this can&rsquo;t work for \(|x|>1\), since the 
 \[\frac{1}{1+x^2} = \sum_{n=0}^\infty (-1)^n x^{2n}\]
 \[\arctan x = \sum_{n=0}^\infty (-1)^n \frac{x^{2n+1}}{2n+1}\]
 &ldquo;Just as with \(\ln (1-x)\), this can&rsquo;t work for \(|x|>1\), as the sum diverges. But for \(x=1\), it gives a series for \(\frac{\pi}{4}\). Sadly, this converges <i>very</i> slowly, but the tangent addition formula can be used to find faster formulas using arctan. In 1706, John Machin used \(\frac{\pi}{4} = 4\arctan\frac{1}{5} - \arctan\frac{1}{239}\) to calculate a hundred digits of \(\pi\). Of course, now we have computers as well as much faster algorithms.&rdquo;</p>
+<h2>Antiderivatives and Integrals</h2>
+<p>&ldquo;When we asked <i>what that&rsquo;s the derivative of</i>, we were looking for an <i>antiderivative</i>, <i>i.e.</i>, a function whose derivative is the function in question. We glossed over the fact that adding any constant to an antiderivative is also an antiderivative of the same function, so we should have been more careful when we identified \(\arctan x\) with its series, by noting that \(\arctan 0 = 0\). Unsurprisingly, the process of finding antiderivatives is called <i>antidifferentiation</i>.</p>
+<p>&ldquo;Antiderivatives are also known as <i>indefinite integrals</i>, and antidifferentiation is also known as <i>integration</i>. To explain this, let me tell you about integrals. If we have a plot of a function \(f(x)\), we can ask for the area between the <i>x</i> axis and the function, say between \(x=a\) and \(x=b\). This is called a <i>definite integral</i>, and is written as \(\int_a^b f(x) dx\). You can think of this as combining (integrating) an infinite number of infinitely thin slices that form the area. To clarify, the area is a signed quantity, positive when \(f(x)>0\) and negative when \(f(x)<0\), but the opposite if \( b < a \). It should be clear that \(\int_a^b f(x)dx + \int_b^c f(x)dx = \int_a^c f(x)dx\).</p>
+<p>&ldquo;What you may notice is that if \(f\) doesn&rsquo;t change very much between <i>a</i> and <i>b</i>, the integral can be approximated by a trapezoid with area \((b-a)(f(a)+f(b))/2\). A more formal way of saying this is that \(\int_a^{a+\delta} f(x) dx = (f(a)+o(\delta))\delta\) as long as \(f(a+\delta) = f(a) + o(\delta)\).</p>
+<canvas id='integral'></canvas>    
+<p>&ldquo;If you haven&rsquo;t already guessed the connection with derivatives:
+\[\frac{d}{db}\int_a^b f(x)dx = \lim_{\delta\rightarrow 0}\frac{\int_a^{b+\delta}f(x)-\int_a^b f(x)}{\delta} = \lim_{\delta\rightarrow 0}\frac{\int_b^{b+\delta}f(x)}{\delta} = \lim_{\delta\rightarrow 0} \frac{f(b)+o(\delta)\delta}{\delta} = f(b)\]
+&ldquo;In other words, the derivative of the integral of a well-behaved function is the function itself. Normally, we write this fact with an indefinite integral: \[\frac{d}{dx}\int f(x)dx = f(x)\]</p>				      <p>&ldquo;When \(f(x)\) has a derivative, it&rsquo;s also true that \[\int\frac{df(x)}{dx}dx = f(x) + C\\\] as you might see by taking the derivative of both sides. \(C\) could be any constant.</p>
 <div id='log' class="popup" onclick="this.style.display='none'">
 <h2>Logarithms</h2>
 <p>Logarithms and exponentiation are opposites. \(\log_b x\) is the exponent that base \(b\) has to be raised to to get \(x\): \(b^{\log_b x}=x\). Of course that also means that \(\log_b b^x = x\).</p>
