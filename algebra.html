@@ -5,29 +5,16 @@
 <script type="text/javascript" id="MathJax-script" async
   src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
 </script>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@15.2.0/lib/browser/math.min.js">
+</script>
 <script>
 
-var cwidth;
-var cheight = 70;
-var cinheight = 50;
-
-var cvp;
-var ctp;
+var newmath;
 
 function init() {
-  cwidth=document.body.offsetWidth;
-  initplot();
-}
-
-function initplot() {
-  cvp = document.getElementById('plot');
-  cvp.addEventListener('click',showtan);
-  ctp = cvp.getContext('2d');
-  cvp.width = cwidth;
-  cvp.height = cheight;
-  ctp.setTransform(1,0,0,1,0,0);
-  ctp.clearRect(0,0,cwidth,cheight);
-  ctp.translate(cwidth/2,cheight/2);
+  newmath = document.getElementById('newmath');
+  initmmx();
 }
 
 function showpopup(o,s) {
@@ -43,6 +30,215 @@ function showpopup(o,s) {
   o.style.top = Math.max(window.scrollY,
 			 Math.min(window.scrollY+window.innerHeight-q.height,
 				  (r.top+r.bottom-q.height)/2-b.top))+'px';
+}
+
+/****************************************************************
+  Matrix multiplication exercise
+****************************************************************/
+var keyboard;
+
+var ABC;    // matrices for matrix multiplication
+
+var target;    // target for input
+var targetrow;
+var targetcol;
+
+function initmmx() {
+  keyboard = document.getElementById('keyboard');
+  keyboard.addEventListener('input',keystroke);
+  keyboard.value = '';
+  keyboard.addEventListener('keydown',tabcheck);
+}
+
+function showmmx(o) {
+  var newmath = document.getElementById('newmath')
+  ABC = createMM();
+  var D = ABC.D = math.zeros(ABC.C.size(),'dense');
+  for (var i = D.size()[0]; i--;) {
+    for (var j = D.size()[1]; j--;) {
+      D.set([i,j],'?');
+    }
+  }
+  drawABD();
+  showpopup(o,'mmx');
+}
+
+function drawABD() {
+  MathJax.typesetClear([newmath]);
+  newmath.innerHTML =
+    '\\[\\class{A}{' + math2tex(ABC.A) + '}\\class{B}{' + math2tex(ABC.B) +
+    '}=\\class{C}{' + math2tex(ABC.D) + '}\\]';
+  MathJax.typeset([newmath]);  
+  var i,j,d,t;
+  for (i=0; i<math.size(ABC.C)[0]; i++) {
+    for (j=0; j<math.size(ABC.C)[1]; j++) {
+      t = document.querySelector('.C .row'+i+'.col'+j);
+      t.addEventListener('click',enableCInput);
+      var d = ABC.D.get([i,j]);
+      if (typeof(d) != 'string' &&
+	  math.equal(ABC.D.get([i,j]),ABC.C.get([i,j]))) {
+	t.classList.remove('wrong')
+	t.classList.add('right');
+      } else {
+	t.classList.remove('right');
+	if (d != '?') t.classList.add('wrong');
+      }
+    }
+  }
+}
+
+function tabcheck(event) {
+  if (event.key == 'Tab') {
+    try {
+      rc = math.size(ABC.C);
+    } catch {
+      return;
+    }
+    highlightArowBcol(targetrow,targetcol,false);
+    d = event.shiftKey ? -1 : 1;
+    targetcol += d;
+    if (targetcol < 0) {
+      targetcol = rc[1]-1;
+      if (--targetrow < 0) {
+	targetrow = rc[0]-1;
+      }
+    } else if (targetcol >= rc[1]) {
+      targetcol = 0;
+      if (++targetrow >= rc[0]) {
+	targetrow = 0;
+      }
+    };
+    target.classList.remove('selected');
+    target = document.querySelector('.C .row'+targetrow+'.col'+targetcol);
+    target.classList.add('selected');
+    highlightArowBcol(targetrow,targetcol,true);
+    event.stopPropagation();
+    event.preventDefault();
+    keyboard.value='';
+    keyboard.focus();
+  }
+}
+
+function keystroke(event) {
+  var error;
+  var v;
+  var iv = event.target.value || '?';
+  try {
+    v = math.fraction(iv);
+    if (v.d == 1) {
+      if (iv.length == 1 && '+-'.indexOf(iv) >= 0) throw new Error('+-');
+      v = v.s*v.n;
+    } else {
+      v = '\\frac{' + v.s*v.n + '}{' + v.d + '}';
+    }
+  } catch (error) {
+    v = iv;
+  } finally {
+  }
+  ABC.D.set([targetrow,targetcol],v);
+  drawABD();  
+  target = document.querySelector('.C .row'+targetrow+'.col'+targetcol);
+  target.classList.add('selected');
+  highlightArowBcol(targetrow,targetcol,true);
+}
+
+function highlight(o) {
+  o.classList.add('highlight');
+}
+
+function lowlight(o) {
+  o.classList.remove('highlight');
+}
+
+function highlightArowBcol(r,c,b) {
+  document.querySelectorAll('.A .row'+r).forEach(b?highlight:lowlight);
+  document.querySelectorAll('.B .col'+c).forEach(b?highlight:lowlight);
+}
+
+const rownum = /row(\d+)/
+const colnum = /col(\d+)/
+
+function enableCInput(event) {
+  var i,j;
+  event.stopPropagation();
+  event.preventDefault();
+  target = event.target.closest('[class^="row"],[class*=" row"]');
+  keyboard.focus();
+  document.querySelectorAll('.selected').forEach(
+    function(o) {
+      o.classList.remove('selected');
+      i = 1*rownum.exec(o.className)[1];
+      j = 1*colnum.exec(o.className)[1];
+      highlightArowBcol(i,j,false);
+    }
+  )
+  targetrow = i = 1*rownum.exec(target.className)[1];
+  targetcol = j = 1*colnum.exec(target.className)[1];
+  target.classList.add('selected');
+  highlightArowBcol(i,j,true);
+  var v = ABC.D.get([i,j]);
+  if (v == '?') {
+    v = '';
+  } else {
+    v = math.string(v);
+  }
+  keyboard.value = v;
+}
+
+function randint(a,b) {
+  if (b == undefined) {
+    b = a;
+    a = -a;
+  }
+  return a+Math.floor((b-a+1)*Math.random());
+}
+
+function randint5() {
+  return randint(5);
+}
+
+function createMM() {
+  // create random matrix multiplication problem
+  // first, pick dimesions l,m,n
+  var i = randint(2,4);
+  var j = randint(2,4);
+  var k = randint(2,4);
+  // now, pick random (i+k)j elements in range [-5,5]
+  var A = math.matrixFromFunction([i,j],randint5,'dense');
+  var B = math.matrixFromFunction([j,k],randint5,'dense');
+  var C = math.multiply(A,B);
+  return {A:A,B:B,C:C};
+}
+
+// when select product matrix element, highlight relevant row of A and col of B
+// must call highlight whenever we rerun math2tex!
+// use classes: rowi, colj [per element]; selected; argA, argB, argC [per matrix]
+// so how do we insert these classes in the below function?
+// how about we add a dictionary argument? 
+
+function math2tex(x) {
+  switch(math.typeOf(x)) {
+  case 'number':
+  case 'bigint':
+  case 'bigNumber':
+  case 'string':
+    return math.string(x);
+  case 'Fraction':
+    return '\\fraction{'+math2tex(x.n)+'}{'+math2tex(x.d)+'}';
+  case 'DenseMatrix' :
+    var s = '\\begin{bmatrix}';
+    var z = math.size(x);
+    for (i = 0; i < z[0]; i++) {
+      for (j = 0; j < z[1]; j++) {
+	s += '\\class{row'+i+' col'+j+'}{'
+	s += math2tex(x.get([i,j]))+'}&';
+      }
+      s = s.slice(0,-1) + '\\\\';
+    }
+    return s.slice(0,-2) + '\\end{bmatrix}';
+  default:
+    throw new Error('Unrecognized math type '+math.typeOf(x));
+  }
 }
 </script>
 <style>
@@ -70,10 +266,14 @@ h2 {
   text-align:center;
   font-size:14pt;
 }
-canvas {
-  display:block;
-  margin:0 auto;
-  cursor:crosshair;
+:has(> .highlight) {background-color:yellow;}
+:has(> .wrong) {background-color:pink;}
+:has(> .selected) {background-color:orange;}
+:has(> .right) {background-color:lightgreen;}
+#keyboard {
+  position:fixed;
+  top:-100px;
+  left:-100px;
 }
 .popup {
   background-color:white;
@@ -105,6 +305,7 @@ p.top {
 </style>
 </head>
 <body id='body' onload="init()" onresize="init()">
+<input id='keyboard'></input>
 <p class='top'>
   <a href='fib.html'>Fi &amp; Lu</a>&nbsp;
   <a href='area.html'>Area</a>&nbsp;
@@ -158,7 +359,7 @@ so \(z = 70\div 14 = 5\), which then gives \(y=12-3z=12-15=-3\) and then \(x=3-3
 <h2>Matrices</h2>
 <p>&ldquo;When our system of equations is linear, as in the example above, we can simplify the solution process by using matrix algebra. We talked a bit about matrices when we discussed computing Fibonacci and Lucas numbers. We&rsquo;ll describe matrices in more detail now.</p>
 <p>&ldquo;We should first say what we mean by linear equations. These are equations where the only operations are addition and multiplication and the only operands are constants and variables, and no multiplication involves more than one variable. They&rsquo;re called linear because the relationship between \(x\) and \(ax+b\) is a straight line. More formally, a linear transformation might take a set of variables, multiply each by a constant, and add the products together to produce a single result. It could do this many times, with different constants, to produce many results. We can use a rectangular array (a <i>matrix</i>) of constants to specify the linear transformation, where the rule for applying a matrix to a <i>vector</i> of variables is \[\begin{bmatrix}a_{11}&\dots&a_{1n}\\\vdots&\vdots&\vdots\\a_{m1}&\dots&a_{mn}\end{bmatrix} \begin{bmatrix}x_1\\\vdots\\x_n\end{bmatrix} = \begin{bmatrix}a_{11}x_1+\cdots+a_{1n}x_n\\\vdots\\a_{m1}x_1+\cdots+a_{mn}x_n\end{bmatrix}\] You&rsquo;ll notice that when showing the elements of a matrix, we often use just one letter subscripted with row and column numbers rather than using a different letter for each element. In the subscript, we might separate row number from column number with a comma, <i>e.g.</i>, \(a_{r,c}\), but usually elide the comma unless either number requires more than one glyph. And if the matrix has only a single column (or row), then only the row (or column) number is specified and no comma is needed.<p>
-<p>&ldquo;The above matrix of constants has \(m\) rows and \(n\) columns, so it&rsquo;s an \(m\times n\) matrix (pronounced <i>m by n</i>); \(m\) and \(n\) are the matrix&rsquo;s <i>dimensions</i>. The vector is in fact an \(n\times 1\) matrix. We can apply one matrix to another as long as the number of columns in the first matrix is equal to the number of rows in the second. The first matrix is applied to each column of the second matrix independently to produce the corresponding column of the resulting matrix. This is called matrix multiplication; the product of an \(m\times n\) matrix times an \(n\times k\) matrix is an \(m\times k\) matrix.\[\begin{bmatrix}a_{11}&\dots&a_{1n}\\\vdots&\vdots&\vdots\\a_{m1}&\dots&a_{mn}\end{bmatrix} \begin{bmatrix}b_{11}&\dots&b_{1k}\\\vdots&\vdots&\vdots\\b_{n1}&\dots&b_{nk}\end{bmatrix} =\begin{bmatrix}a_{11}b_{11}+\cdots+a_{1n}b_{n1}&\dots&a_{11}b_{1k}+\cdots+a_{1n}b_{nk}\\\vdots&\vdots&\vdots\\a_{m1}b_{11}+\cdots+a_{mn}b_{n1}&\dots&a_{m1}b_{mk}+\cdots+a_{mn}b_{nk}\end{bmatrix}\] Sometimes, we use sigma notation to succinctly represent matrix multiplication: \[c_{ik} = \sum_{j=1}^n a_{ij} b_{jk}\] Matrix multiplication has many of the properties we associate with multiplication of numbers, in particular, matrix multiplication is associative: if \(\boldsymbol{A}\), \(\boldsymbol{B}\), and \(\boldsymbol{C}\) are three matrices with compatible dimensions, \((\boldsymbol{A}\boldsymbol{B})\boldsymbol{C} = \boldsymbol{A}(\boldsymbol{B}\boldsymbol{C})\). But it&rsquo;s not commutative: \(\boldsymbol{A}\boldsymbol{B}\) is not necessarily the same as \(\boldsymbol{B}\boldsymbol{A}\) even when their dimensions make both products possible and even when both products have the same dimensions (as only happens when both \(\boldsymbol{A}\) and \(\boldsymbol{B}\) are square matrices with equal dimensions). (As you may have guessed, a square matrix is a matrix that has the same number of rows as columns.)</p>
+  <p>&ldquo;The above matrix of constants has \(m\) rows and \(n\) columns, so it&rsquo;s an \(m\times n\) matrix (pronounced <i>m by n</i>); \(m\) and \(n\) are the matrix&rsquo;s <i>dimensions</i>. The vector is in fact an \(n\times 1\) matrix. We can apply one matrix to another as long as the number of columns in the first matrix is equal to the number of rows in the second. The first matrix is applied to each column of the second matrix independently to produce the corresponding column of the resulting matrix. This is called matrix multiplication; the product of an \(m\times n\) matrix times an \(n\times k\) matrix is an \(m\times k\) matrix.\[\begin{bmatrix}a_{11}&\dots&a_{1n}\\\vdots&\vdots&\vdots\\a_{m1}&\dots&a_{mn}\end{bmatrix} \begin{bmatrix}b_{11}&\dots&b_{1k}\\\vdots&\vdots&\vdots\\b_{n1}&\dots&b_{nk}\end{bmatrix} =\begin{bmatrix}a_{11}b_{11}+\cdots+a_{1n}b_{n1}&\dots&a_{11}b_{1k}+\cdots+a_{1n}b_{nk}\\\vdots&\vdots&\vdots\\a_{m1}b_{11}+\cdots+a_{mn}b_{n1}&\dots&a_{m1}b_{mk}+\cdots+a_{mn}b_{nk}\end{bmatrix}\] <span onclick="showmmx(this)">Try it yourself.</span> Sometimes, we use sigma notation to succinctly represent matrix multiplication: \[c_{ik} = \sum_{j=1}^n a_{ij} b_{jk}\] Matrix multiplication has many of the properties we associate with multiplication of numbers, in particular, matrix multiplication is associative: if \(\boldsymbol{A}\), \(\boldsymbol{B}\), and \(\boldsymbol{C}\) are three matrices with compatible dimensions, \((\boldsymbol{A}\boldsymbol{B})\boldsymbol{C} = \boldsymbol{A}(\boldsymbol{B}\boldsymbol{C})\). But it&rsquo;s not commutative: \(\boldsymbol{A}\boldsymbol{B}\) is not necessarily the same as \(\boldsymbol{B}\boldsymbol{A}\) even when their dimensions make both products possible and even when both products have the same dimensions (as only happens when both \(\boldsymbol{A}\) and \(\boldsymbol{B}\) are square matrices with equal dimensions). (As you may have guessed, a square matrix is a matrix that has the same number of rows as columns.)</p>
 <p>&ldquo;Matrices can also be added, but only when they have the same dimensions; in that case, addition is performed element by element:\[\begin{bmatrix}a_{11}&\dots&a_{1n}\\\vdots&\vdots&\vdots\\a_{m1}&\dots&a_{mn}\end{bmatrix} +\begin{bmatrix}b_{11}&\dots&b_{1n}\\\vdots&\vdots&\vdots\\b_{m1}&\dots&b_{mn}\end{bmatrix} =\begin{bmatrix}a_{11}+b_{11}&\dots&a_{1n}+b_{1n}\\\vdots&\vdots&\vdots\\a_{m1}+b{m1}&\dots&a_{mn}+b_{mn}\end{bmatrix}\] Matrix addition is associative and communtative, <i>i.e.</i>, \((\boldsymbol{A}+\boldsymbol{B})+\boldsymbol{C} = \boldsymbol{A}+(\boldsymbol{B}+\boldsymbol{C})\) and \(\boldsymbol{A}+\boldsymbol{B} = \boldsymbol{B}+\boldsymbol{A}\). And matrix multiplication distributes over matrix addition: \(\boldsymbol{A}(\boldsymbol{B}+\boldsymbol{C}) = \boldsymbol{A}\boldsymbol{B} + \boldsymbol{A}\boldsymbol{C}\) and \((\boldsymbol{B}+\boldsymbol{C})\boldsymbol{D} = \boldsymbol{B}\boldsymbol{D}+\boldsymbol{C}\boldsymbol{D}\) whenever the matrix additions and multiplications can be done. These matrix arithmetic properties are derived from the associative, commutative, and distributive properties of the matrix elements. But note that element multiplication does not have to be commutative, and even if it is, matrix multiplication isn&rsquo;t.</p>
 <p>&ldquo;The system of equations in the previous section, in matrix form, is \[\begin{bmatrix}1&3&2\\-1&-2&1\\2&1&3\end{bmatrix}\begin{bmatrix}x\\y\\z\end{bmatrix} = \begin{bmatrix}3\\9\\16\end{bmatrix}\]</p>
 <p>This is solved by performing a sequence of <i>row operations</i> that swap two rows, multiply a row by a nonzero constant, or add a multiple of one row to another, with the goal of transforming the left-hand matrix into an identity matrix, <i>i.e.</i>, a square matrix \(\mathbf{I}\) with 1s along the diagonal and 0s everywhere else so that when multiplied with any compatible matrix leaves that matrix unchanged. The same row operations must be simultaneously applied to the right-hand matrix. In this case, we add the first row to the second row, and &minus;2 times the first row to the third row, getting \[\begin{bmatrix}1&3&2\\0&1&3\\0&-5&-1\end{bmatrix}\begin{bmatrix}x\\y\\z\end{bmatrix} = \begin{bmatrix}3\\12\\10\end{bmatrix}\] Next we add &minus;3 times the second row to the first and 5 times the second row to the third row, getting \[\begin{bmatrix}1&0&-7\\0&1&3\\0&0&14\end{bmatrix}\begin{bmatrix}x\\y\\z\end{bmatrix} = \begin{bmatrix}-33\\12\\70\end{bmatrix}\] Finally, we divide the third row by 14, then add 7 times the third row to the first row and add &minus;3 times the third row to the second row, getting \[\begin{bmatrix}1&0&0\\0&1&0\\0&0&1\end{bmatrix}\begin{bmatrix}x\\y\\z\end{bmatrix} = \begin{bmatrix}2\\-3\\5\end{bmatrix}\] and that solves the system of equations! In the general case, the row operations are performed as follows: for each column of the left-hand matrix, say column \(c\), starting with column 1 and moving forward, find a row whose first nonzero element is in column \(c\), swap it with row \(c\), divide it by that first nonzero element, and then for each row \(r\neq c\), subtract row \(c\) times the element in row \(r\) column \(c\) from row \(r\). After the last column is processed, the left-hand matrix is an identity matrix. Notice that in the example above, some of the row operations we described for the general case were skipped because they would have had no effect.</p>
@@ -175,6 +376,11 @@ so \(z = 70\div 14 = 5\), which then gives \(y=12-3z=12-15=-3\) and then \(x=3-3
 <h2>Exponentiation</h2>
 <p>Exponentiation is the process of raising a base to a power called the exponent. If the exponent is a nonnegative integer, it&rsquo;s the number of times 1 is multiplied by the base. So, for example, \(2^3 = 1\times 2\times 2\times 2 = 8\), while \(2^0 = 1\). If the exponent is a negative integer, its magnitude is the number of times 1 is divided by the base. So \(2^{-3} = 1\div 2\div 2\div 2 = \frac{1}{8}\).</p>
 <p>It&rsquo;s fairly clear that for integer exponents \(b^c\times b^d = b^{c+d}\) and not hard to see that \((b^c)^d = b^{c\times d}\). If we want to maintain those equalities for rational exponents, we have to have \(b^{1/c} = \sqrt[c]{b}\), and in particular \(b^{1/2} = \sqrt{b}\). This can be problematic if the base isn&rsquo;t positive, but for positive bases, it&rsquo;s not hard to extend the definition to arbitrary real exponents.</p>
+</div>
+<div id="mmx" class="popup">
+<h2 onclick="this.parentElement.style.display='none'">Matrix multiplication exercise, click here to close</h2>
+<p>Select an element in the product matrix (initially a question mark) to input its value. Its value should be the sum of the products of the elements of the highlighted row of the first matrix with the corresponding elements of the highlighted column of the second matrix. A correct entry will turn green.</p>
+<p id='newmath'></p>
 </div>
 </body>
 </html>
