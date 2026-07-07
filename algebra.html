@@ -114,7 +114,13 @@ function tabcheck(event) {
     highlightArowBcol(targetrow,targetcol,true);
     event.stopPropagation();
     event.preventDefault();
-    keyboard.value='';
+    var v = ABC.D.get([targetrow,targetcol]);
+    if (v == '?') {
+      v = '';
+    } else {
+      v = math.string(v);
+    }
+    keyboard.value=v;
     keyboard.focus();
   }
 }
