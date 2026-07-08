@@ -88,41 +88,69 @@ function drawABD() {
 }
 
 function tabcheck(event) {
-  if (event.key == 'Tab') {
-    try {
-      rc = math.size(ABC.C);
-    } catch {
-      return;
-    }
-    highlightArowBcol(targetrow,targetcol,false);
-    d = event.shiftKey ? -1 : 1;
-    targetcol += d;
-    if (targetcol < 0) {
-      targetcol = rc[1]-1;
-      if (--targetrow < 0) {
-	targetrow = rc[0]-1;
-      }
-    } else if (targetcol >= rc[1]) {
-      targetcol = 0;
-      if (++targetrow >= rc[0]) {
-	targetrow = 0;
-      }
-    };
-    target.classList.remove('selected');
-    target = document.querySelector('.C .row'+targetrow+'.col'+targetcol);
-    target.classList.add('selected');
-    highlightArowBcol(targetrow,targetcol,true);
-    event.stopPropagation();
-    event.preventDefault();
-    var v = ABC.D.get([targetrow,targetcol]);
-    if (v == '?') {
-      v = '';
-    } else {
-      v = math.string(v);
-    }
-    keyboard.value=v;
-    keyboard.focus();
+  try {
+    rc = math.size(ABC.C);
+  } catch {
+    return;
   }
+  var x,y;
+  var d = 0;
+  switch (event.key) {
+  default :
+    return;
+  case 'ArrowUp' :
+    x = 0;
+    y = -1;
+    break;
+  case 'ArrowDown' :
+    x = 0;
+    y = 1;
+    break;
+  case 'ArrowLeft' :
+    x = -1;
+    y = 0;
+    break;
+  case 'ArrowRight' :
+    x = 1;
+    y = 0;
+    break;
+  case 'Tab' :
+    x = d = event.shiftKey ? -1 : 1;
+    y = 0;
+    break;
+  case 'Enter' :
+    x = y = 0;
+    break;
+  }
+  highlightArowBcol(targetrow,targetcol,false);
+  targetcol += x;
+  targetrow += y;
+  if (targetcol < 0) {
+    targetcol = rc[1]-1;
+    targetrow += d;
+  } else if (targetcol >= rc[1]) {
+    targetcol = 0;
+    targetrow += d;
+  }
+  if (targetrow < 0) {
+    targetrow = rc[0]-1;
+  } else if (targetrow >= rc[0]) {
+    targetrow = 0;
+  }
+  target.classList.remove('selected');
+  target = document.querySelector('.C .row'+targetrow+'.col'+targetcol);
+  target.classList.add('selected');
+  highlightArowBcol(targetrow,targetcol,true);
+  event.stopPropagation();
+  event.preventDefault();
+  var v = ABC.D.get([targetrow,targetcol]);
+  if (v == '?') {
+    v = '';
+  } else {
+    v = math.string(v);
+  }
+  keyboard.value=v;
+  keyboard.focus();
 }
 
 function keystroke(event) {
