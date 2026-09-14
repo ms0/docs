@@ -672,11 +672,14 @@ function tokens2math(t,p) {
     a = t[i];
     if (typeof(a) == 'string') {    // operator
       var q = collapsible(t,i);
-      if (q) {
+      if (q && a != '^') {
 	s += '\\cssId{'+p+'-'+i+'}{';
       }
       s += a;
       if (a == '^') {
+	if (q) {
+	  s += '{\\cssId{'+p+'-'+i+'}';
+	}
 	a = t[++i];
 	s += '{' + (Array.isArray(a) ? tokens2math(a,p+'-'+i) : math2tex(a)) + '}';
       }
