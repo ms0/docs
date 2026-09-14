@@ -250,15 +250,59 @@ function createMM() {
 // so how do we insert these classes in the below function?
 // how about we add a dictionary argument? 
 
+function showpx(o) {
+  var x = document.getElementById('expr');
+  MathJax.typesetClear([x.parentNode]);  
+  x.innerHTML = '\\[' + makeexpr(randint(5,7)) + '\\]';
+  MathJax.typeset([x.parentNode]);  
+  document.querySelectorAll('[id^="C-"]').forEach(
+    function(e) {e.addEventListener('click',xclick)});
+  showpopup(o,'px');
+}
+
+function xclick(event) {
+  event.stopPropagation();
+  event.preventDefault();
+  var t = event.target;
+  while (!t.id) {
+    t = t.parentElement;
+  }
+  /* we need to collapse the operator in question, perhaps animating
+     collapse: a+b, a-b, a*b, a/b, a^{b}, where a and b are numbers
+     parens are automatically collapsed when only a number remains
+     can click on b for a^{b}; else, click on operator
+     when is operator collapsible?
+     (a), a^{b}
+     a-b and a+b when (,{, +, - operator to left and ),},+,- to right
+     but if binary - to left, replace with + and use -a (or not allow)
+     a/b and a*b when (,{,+,-,*,/ operator to left and ),},+,-,*,/ to right
+     but if / to left, replace with * and use (1/a) (or not allow)
+     NOTE: when we're down to just a single number, we're done
+  */
+  operate(T,t.id.slice(2));
+  var x = document.getElementById('expr');
+  MathJax.typesetClear([x.parentNode]);  
+  x.innerHTML = '\\[' + tokens2math(T,'C') + '\\]';
+  MathJax.typeset([x.parentNode]);  
+  document.querySelectorAll('[id^="C-"]').forEach(
+    function(e) {e.addEventListener('click',xclick)});
+  if (T.length == 1 && !Array.isArray(T[0])) {
+    x.querySelector('.MJX-TEX').style.backgroundColor = 'lightgreen';
+  }
+}
+
 function math2tex(x) {
   switch(math.typeOf(x)) {
   case 'number':
   case 'bigint':
   case 'bigNumber':
+    return x.toString();
   case 'string':
-    return math.string(x);
+    return x;
   case 'Fraction':
-    return '\\fraction{'+math2tex(x.n)+'}{'+math2tex(x.d)+'}';
+    return (x.s < 0 ? '-' : '') +
+      (x.d == 1 ?
+       math2tex(x.n) : '\\frac{'+math2tex(x.n)+'}{'+math2tex(x.d)+'}');
   case 'DenseMatrix' :
     var s = '\\begin{bmatrix}';
     var z = math.size(x);
@@ -272,6 +316,625 @@ function math2tex(x) {
     return s.slice(0,-2) + '\\end{bmatrix}';
   default:
     throw new Error('Unrecognized math type '+math.typeOf(x));
+  }
+}
+
+/****************************************************************
+Create random algebraic expression with no variables
+Ops: + - * / **
+
+When can we perform an operation?
+^ only when ^{n}
++- if first or first after ( or ^{ in sequence n +- n +-
+   [also, if all to left are +]
+x/ if first or first after +- or ( or ^{ in sequence n x/ n +-x/
+   [also, if all to left are x]
+
+****************************************************************/
+
+function ParseTree(op,val) {
+  this.op = op;
+  this.val = val;    // value of terminal node, or +-1 for sign applied to op
+}
+
+function randop() {
+  const ops = ['+','+','+','-','-','-','\u00d7','\u00d7','\u00f7','\u00f7','^'];
+  return ops[randint(0,ops.length-1)]
+}
+
+// first create parse tree, then translate!
+/* algorithm:
+   create expr:
+   0. choose a number of numbers (leaves), n
+   1a. if n == 1, choose a number to return
+   1b. choose an operator (and a sign?)
+   2. partition n in two non-zero pieces
+   3. create two subexprs
+   then, convert to MathJax
+   parens are needed based on precedence of operators
+ */
+
+function randtree(n) {
+  if (n < 2) {
+    var t = new ParseTree('',randint(9));
+  } else {
+    var t = new ParseTree(randop(),randint(2)?1:-1);
+    var d = randint(1,n-1);
+    t.left = randtree(d);
+    t.right = randtree(n-d);
+  }
+  return t;
+}
+
+/* when do we need parens around A [-]op B ?
+   A -op B means -(A op B)
+   so never need - on leaf node, which is already signed number
+   How do we massage tree to eliminate extra parens and minus signs?
+    A minus on a x or / can be moved down to either arg
+    A minus on a + can be moved down to both args
+      or turned to a - and moved down to left arg
+    A minus on a - can be removed by switching left and right
+    A minus on an ^ can't be moved
+    If a + has a + or - below, no paren needed
+    If a - has a + or - on left, no paren on left
+    If a - has a + or - on right, need parens
+    If a + or - has x / ^ on either side, no parens needed
+    If a x or / has a + or - below, need parens
+    If a x has a x or / below, no paren needed
+    If a / has a x or / on left, no paren needed
+    If a / has a x or / on right, need parens
+    If a ^ has anything on left other than a positive integer, need parens
+    Right child of ^ always needs {}
+
+   when do we need parens around children?
+   A [-]op B
+   If op is ^, then both A and B need parens
+   If op is x, then if Aop is +-; if Bop is +-
+   If op is /, then if Aop is +-; if Bop is +-x/
+   If op is +-, never
+*/
+
+ParseTree.prototype.depth = function() {
+  if (this.op) {
+    return 1 + Math.max(this.left.depth(),this.right.depth());
+  } else {
+    return 0;
+  }
+}
+
+ParseTree.prototype.display = function() {
+  const a = this.string();
+  var b;
+  var c;
+  const d = a.length;
+  a[d-1] = a[d-1].join(' ');
+  for (n = d-1; n--;) {
+    b = ' '.repeat(3*2**(d-1-n)-2);
+    c = ' '.repeat(3*2**(d-2-n)-1);
+    a[n] = c + a[n].join(b);
+  }
+  return '\n' + a.join('\n');
+}
+
+ParseTree.prototype.string = function() {
+  var d = this.depth();
+  var sarray = new Array(d+1);
+  var i;
+  for (i = 0; i <= d; i++) {
+    sarray[i] = new Array(2**i).fill('  ');
+  }
+  this.substring(d,0,sarray);
+  return sarray;
+}
+
+ParseTree.prototype.substring = function(h,o,sarray) {
+  // h is height from bottom of tree (determines spacing)
+  // o is offset (0 is leftmost)
+  // sarray is array of arrays of strings, one per level
+  /* example
+            -
+      -          --
+   8     -    -+    -^
+       2 -8  2  2  9  5
+  */
+  const d = sarray.length-1;    // depth of tree
+  sarray[d-h][o] = this.op ? (this.val < 0 ? '-' : ' ') + this.op :
+                             (this.val < 0 ? '' : ' ') + this.val;
+  if (this.op) {
+    this.left.substring(h-1,2*o,sarray);
+    this.right.substring(h-1,2*o+1,sarray);
+  }
+}
+
+ParseTree.prototype.js = function() {
+  if (!this.op) {
+    return ('('+ this.val + ')')
+      .replaceAll('^','**').replaceAll('\u00d7','*').replaceAll('\u00f7','/');
+  }
+  return ('(' + this.val + '*(' + this.left.js() + this.op + this.right.js() + '))')
+    .replaceAll('^','**').replaceAll('\u00d7','*').replaceAll('\u00f7','/');
+}
+
+
+ParseTree.prototype.eval = function() {
+  var v;
+  switch (this.op) {
+  case '' :
+    return this.value = math.fraction(this.val);
+  case '+' :
+    return this.value = math.multiply(this.val,math.add(this.left.eval(),this.right.eval()));
+  case '-' :
+    return this.value = math.multiply(this.val,math.subtract(this.left.eval(),this.right.eval()));
+  case '\u00d7':
+    return this.value = math.multiply(this.val,math.multiply(this.left.eval(),this.right.eval()));
+  case '\u00f7':
+    return this.value = math.multiply(this.val,math.divide(this.left.eval(),this.right.eval()));
+  case '^':
+    return this.value = math.multiply(this.val,math.pow(this.left.eval(),this.right.eval()));
+  default:
+    throw new Error('Unknown Operator '+this.op);
+  }
+}
+
+/*
+  attempt to get val to be + by moving - down unless bot children become -
+  but should we be doing this top down or bottom up?
+  when we have -x or -/, do we choose left or right based on their signs?
+  -^ always stays  
+  do we just turn (a-b) into a+(-b) and then do + processing?
+*/					 
+
+ParseTree.prototype.simplify = function() {    // attempt to propagate signs
+  var t;
+  switch (this.op) {
+  default :
+    return this;    // nothing to do
+  case '-' :
+    this.op = '+'
+    this.right.val *= -1;
+  case '+' :
+    if (this.val < 0) {
+      if (this.left.val < 0) {
+	this.val = 1;
+	this.left.val *= -1;
+	this.right.val *= -1;
+	if (this.right.val < 0) {
+	  this.right.val *= -1;
+	  this.op = '-';
+	}
+      } else if (this.right.val < 0) {
+	this.val = 1;
+	this.right.val *= -1;
+	this.left.val *= -1;
+	if (this.left.val < 0) {
+	  t = this.left;
+	  this.left = this.right;
+	  this.right = t;
+	  this.op = '-';
+	}
+      }
+    } else if (this.left.val < 0) {
+      this.left.val *= -1;
+      if (this.right.val < 0) {
+	this.right.val *= -1;
+	this.val = -1;
+      } else {
+	t = this.left;
+	this.left = this.right;
+	this.right = t;
+	this.op = '-';
+      }
+    }
+    // a+(b+c) -> (a+b)+c ?
+    // a+(b-c) -> (a+b)-c ?
+    // a-(b+c) -> (a-b)-c ?
+    // a-(b-c) -> (a-b)+c ?
+    // or do we leave these as they are?
+    break;
+  case '\u00d7' :    // *
+    if (this.val < 0) {
+      this.val = 1;
+      if (this.left.val < 0) {
+	this.left.val *= -1;
+      } else {
+	this.right.val *= -1;
+      }
+    } else if (this.left.val < 0 && this.right.val < 0) {
+      this.left.val *= -1;
+      this.right.val *= -1;
+    }
+    // a*(b/c) -> (a*b)/c ?
+    // a*(b*c) -> (a*b)*c ?
+    break;
+  case '\u00f7' :    // /
+    if (this.val < 0) {
+      this.val = 1;
+      if (this.left.val < 0) {
+	this.left.val *= -1;
+      } else {
+	this.right.val *= -1;
+      }
+    } else if (this.left.val < 0 && this.right.val < 0) {
+      this.left.val *= -1;
+      this.right.val *= -1;
+      // a/(b/c) -> (a/b)*c ?
+      // a/(b*c) -> (a/b)/c ?
+    }
+    break;
+  case '^':
+    break;    // nothing to do at this level
+  }
+  this.left.simplify();
+  this.right.simplify();
+  return this;
+}
+			 
+
+ParseTree.prototype.math = function() {
+  /* left op right, or -(left op right)
+  */     
+  var s;    // output string
+  switch (this.op) {
+  case '' :
+    return ''+this.val;
+  case '-' :
+  case '+' :
+    s = this.left.math() + this.op + this.right.math();
+    if (this.val < 0) {
+      return '-(' + s + ')';
+    } else {
+      return s;
+    }
+    break;
+  case '\u00d7' :    // x
+    if (this.left.op == '') {
+      s = '' + (this.left.val *= this.val);
+      this.val = 1;
+    } else {
+      s = this.val < 0 ? '-' : '';
+      if (this.left.op == '+' || this.left.op == '-') {
+	s += '(' + this.left.math() + ')';
+      } else {
+	s += this.left.math();
+      }
+    }
+    s += this.op;
+    if (this.right.op == '+' || this.right.op == '-') {
+      s += '(' + this.right.math() + ')';
+    } else {
+      s += this.right.math();
+    }
+    return s;
+  case '\u00f7' :    // /
+    if (this.left.op == '') {
+      s = '' + this.val*this.left.val;
+    } else {
+      s = this.val < 0 ? '-' : '';
+      if (this.left.op == '+' || this.left.op == '-') {
+	s += '(' + this.left.math() + ')';
+      } else {
+	s += this.left.math();
+      }
+    }
+    s += this.op;
+    if (this.right.op == '+' || this.right.op == '-' ||
+	this.right.op == '\u00d7' || this.right.op == '\u00f7') {
+      s += '(' + this.right.math() + ')';
+    } else {
+      s += this.right.math();
+    }
+    return s;
+  case '^' :
+    if (this.left.op || this.left.val < 0) {
+      s = '(' + this.left.math() + ')';
+    } else {
+      s = this.left.math();
+    }
+    s += '^{' + this.right.math() + '}';
+    if (this.val < 0) {
+      s = '-' + s;
+    }
+    return s;
+  default :
+    return '';
+  }
+}
+
+/****************************************************************
+  T is tokenized math expression, a tree
+  We need to identify each binary operator that can be collapsed.
+  We can collapse a op b if we can replace it with r = a op b.
+  Each collapsible op in T must have an ID, generated by tokens2math.
+  The ID is a hyphen-connected sequence of indices, one for each level.
+  Exponents are somewhat special because there's no explicit op.
+  Instead, the entire a^{b} takes an ID, only when a and b are atomic.
+  Or maybe just the {b} part ?
+  What about (-1)^7 ? Need to somehow special case this.
+  Or automatically collapse tree to eliminate 1-length arrays, but
+  then add back parens in tokens2math if base is negative?
+  IDs should start with C- so they can be made clickable.
+  document.querySelectorAll('[id^="C-"]').forEach(
+    function(e) {e.addEventListener(...)});
+
+****************************************************************/
+var T;    // tokenized math expression
+
+function postmath(tree) {
+  T = math2tokens(tree.simplify().math());
+  return tokens2math(T,'C');
+}
+
+function tokens2math(t,p) {
+  var i;
+  var s = '';
+  var a;
+  for (i=0; i < t.length; i++) {
+    a = t[i];
+    if (typeof(a) == 'string') {    // operator
+      var q = collapsible(t,i);
+      if (q) {
+	s += '\\cssId{'+p+'-'+i+'}{';
+      }
+      s += a;
+      if (a == '^') {
+	a = t[++i];
+	s += '{' + (Array.isArray(a) ? tokens2math(a,p+'-'+i) : math2tex(a)) + '}';
+      }
+      if (q) {
+	s += '}';
+      }
+    } else if (Array.isArray(a)) {
+      s += '\\left(' + tokens2math(a,p+'-'+i) + '\\right)';
+    } else if ((a < 0 || math.den(a) != 1) && t[i+1] == '^') {
+      s += '\\left(' + math2tex(a) + '\\right)';
+    } else {
+      s += math2tex(a);
+    }
+  }
+  return s;
+}
+
+const symbol = /\\[A-Za-z]+[A-Za-z0-9]*/;        // \alphanumeric
+const number = /(\d+\.?\d*|\d*\.?\d+)/;          // unsigned decimal numbers
+const operator = /[+-]+|[/*^_!\u00d7\u00f7]/;    // allow multiple signs
+const paren = /[\[\]\(\)\{\}]/;                  // parens, brackets, braces
+const variable = /[A-Za-z\u0391-\u03a9\u03b1-\u03c9]/;    //Roman & Greek
+const constant = /[e\u03c0\u03c4]/;    // e, pi, tau  (not used)
+
+const token = new RegExp([symbol,number,operator,paren,variable].map(
+  function(r){return r.source;}).join('|'),'g');
+
+function tokenize(m) {
+  /* given math expression, return list of tokens...
+  *  tokens are names starting with \  or
+  *  single character variables  or
+  *  numbers (string of digits with optional .) or
+  *  operators: +-*^/_|&!  or
+  *  parens {}()[] 
+  */
+  return m.match(token);
+}
+
+function math2tokens(m) {
+  // given a restricted TeX math expression, produces an array of tokens
+  // tokens are unary '-', binary operators, signed math.js numbers, or
+  // arrays representing parenthesized or braced subexpressions
+  // unary minus only appears before parenthesized subexpression
+  // braced subexpressions only occur as exponents
+  // tokens: array==>subexpr; string==>operator; else math.js number
+  var i,j;
+  var m = tokenize(m);    // input array
+  var a = [];    // output array
+  var s = [];    // stack for array
+  var operand = 0;    // last token is operand
+  var parity = 0;     // lsb 0 for +, 1 for -
+  for (i=0; i<m.length; i++) {
+    switch (m[i][0]) {
+    case '+' :
+    case '-' :
+      // replace with single + or - if operand; else it's unary
+      for (parity = 2, j = 0; j < m.length; j++) {
+	if (m[i][j] == '-') {
+	  parity |= 1;
+	}
+      }
+      if (operand) {
+	a.push('+-'[parity&1]);
+	parity = 0;
+	operand = 0;
+      }
+      break;
+      
+    case '*' :
+    case '\u00d7' :
+    case '/' :
+    case '\u00f7' :
+    case '^' :
+      if (!operand || parity) {
+	throw new Error('syntax error at token '+i);
+      }
+      a.push(m[i]);
+      operand = 0;
+      break;
+
+    case '{' :
+    case '(' :
+      if (operand) {
+	throw new Error('syntax error at token '+i);
+      }
+      t = {a:a,p:parity};
+      s.push(t);
+      a = [];
+      parity = 0;
+      break;
+
+    case '}' :
+    case ')' :
+      if (!operand || parity) {
+	throw new Error('syntax error at token '+i);
+      }
+      t = s.pop();
+      if (t.p == 3) {
+	t.a.push('-');
+      }
+      t.a.push(a.length == 1 ? a[0] : a);
+      a = t.a;
+      parity = 0;
+      operand = 1;
+      break;
+
+    case '\\' :
+      if (m[i] == '\\frac') {
+	// get operand as a math fraction
+	if (m[i+1] != '{' || m[i+3] != '}' || m[i+4] != '{' || m[i+6] != '}') {
+	  throw new Error('fraction syntax error');
+	}
+	a.push(math.multiply((-1)**parity,math.fraction(m[i+2],m[i+5])));
+	operand = 1;
+	parity = 0;
+	i += 6;
+      } else {
+	throw new Error('unrecognized token: '+m[i]);
+      }
+      break;
+
+    default :
+      // should be an unsigned number
+      a.push(math.fraction(m[i],(-1)**parity));
+      operand = 1;
+      parity = 0;
+      break;
+    }      
+  }
+  return a.length == 1 ? a[0] : a;
+}
+
+function collapsible(t,i) {
+  // given token array t and index i of binary op, see if collapsible
+  if (Array.isArray(t[i-1]) || Array.isArray(t[i+1]) || t[i+1] == '-') {
+    return false;    // not surrounded by numbers
+  }
+  switch (t[i]) {
+  case '^' :
+    return true;    // exponentiation has highest precedence
+  case '*' :
+  case '\u00d7' :
+  case '/' :
+  case '\u00f7' :
+    if (i > 1 && '^/\u00f7'.indexOf(t[i-2]) >= 0) {
+      return false;    // preceded by ^ or /
+    }
+    if (t.length-i > 1 && t[i+2] == '^') {
+      return false;    // followed by ^
+    }
+    return true;
+  case '+' :
+  case '-' :
+    if (i > 1 && '^*\u00d7/\u00f7-'.indexOf(t[i-2]) >= 0) {
+      return false;    // preceded by ^*/-
+    }
+    if (t.length-i > 1 && '^*\u00d7/\u00f7'.indexOf(t[i+2]) >= 0) {
+      return false;    // followed by ^*/
+    }
+    return true;
+  }
+}
+
+function operate(t,ps) {
+  // given token tree t and operator position ps, perform op on t
+  var op;    // operation to perform
+  var v;     // value of op
+  var i;
+  var b = [t];    // subtrees containing op, ending with op
+  s = ps.split('-');    // indices of arrays (or op) within parent array
+  for (i=0; i<s.length; i++) {
+    b.push(b.at(-1)[s[i]]);
+  }
+  var j = 1*s.pop(); // index of op
+  var o = b.pop();   // operation
+  var c = b.pop();   // array containing op
+  switch (o) {
+  case '+' :
+    op = math.add;
+    break;
+  case '-' :
+    op = math.subtract;
+    break;
+  case '*' :
+  case '\u00d7' :
+    op = math.multiply;
+    break;
+  case '/' :
+  case '\u00f7' :
+    op = math.divide;
+    break;
+  case '^' :
+    op = math.pow;
+    break;
+  }
+  // problem with unary -, i.e., if was -( ), want to replace with number
+  // -(-(... might need to repeat up the tree in this case?
+  // check for unary minus not so simple, e.g. *-(...) or /-(...) or ^-(...)
+  // note that in '-a-b+c', we can execute (-a)-b but not b+c
+  c.splice(j-1,3,(v=op(c[j-1],c[j+1])));
+  // may need to do the rest of this in a loop as we collapse parens...
+  // c points to the array we just modified
+  // b is the list of ancestor arrays
+  while (c.length == 1) {    // replacing parenthetical expr with number
+    if (!b.length) {
+      return;
+    }
+    j = 1*s.pop();
+    (c=b.pop())[j] = v;    // replace
+    // check if unary minus at j-1, in which case combine with result
+    if (j && c[j-1] == '-' && (j < 2 || typeof(c[j-2]) == 'string')) {
+      c.splice(j-1,2,(v=math.unaryMinus(v)));
+    }
+  }
+  if (v < 0 && j > 1) {
+    // see if - can be combined with previous op
+    if (c[j-2] == '+') {    // + is always binary
+      c[j-1] = math.unaryMinus(v);
+      c[j-2] = '-';
+    } else if (c[j-2] == '-') {
+      c[j-1] = math.unaryMinus(v);
+      if (j > 2 && typeof(c[j-3]) != 'string') {
+	c[j-2] = '+';    // binary -, convert to +
+      } else {
+	c.splice(j-2,1); // unary -, remove
+      }
+    }
+  }
+}
+
+var itt;   // initial tree
+var tt;    // tree after processing
+
+function makeexpr(n) {
+  var t;
+  do {
+    t = randtree(n);
+  } while (!checktree(t));
+  itt = structuredClone(tt=t);    //save itt,tt for debugging
+  copyproto(itt,tt);
+  return postmath(t);
+}
+
+function copyproto(t,tree) {
+  // copy prototype to t (a structuredClone) from tree
+  Object.setPrototypeOf(t,Object.getPrototypeOf(tree));
+  if (t.left) copyproto(t.left,tree);
+  if (t.right) copyproto(t.right,tree);
+}
+
+function checktree(tree) {
+  const bignumlim = 1000000000;
+  try {
+    var v = tree.eval();
+    return math.isFraction(v) && v.n < bignumlim && v.d < bignumlim;
+  }
+  catch (error) {
+    return false;
   }
 }
 </script>
@@ -362,6 +1025,7 @@ p.top {
 <p>&ldquo;Here&rsquo;s another example, shown one <span class='red'>rule application</span> at a time and <span class='green'>results of the previous rule application</span>:
 \begin{align*} & 6+5\times 4-3+2^{1+2}\times\class{red}{(3+4)}-5 \\ &= 6+5\times 4-3+2^\class{red}{1+2}\times \class{green}{7}-5 \\ &= 6+5\times 4-3+\class{red}{2}^\class{green}{3}\times 7-5 \\ &= 6+\class{red}{5\times 4}-3+\class{green}{8}\class{red}{\times 7}-5 \\ &= \class{red}{6+}\class{green}{20}-3+\class{green}{56}-5 \\ &= \class{green}{26}\class{red}{-3}+56-5 \\ &= \class{green}{23}\class{red}{+56}-5 \\&= \class{green}{79}\class{red}{-5} \\ &= \class{green}{74} \end{align*}
 </p>
+<p><span onclick="showpx(this)">Try it yourself.</span></p>
 <p>&ldquo;When we use (italic) letters to represent numbers, we usually elide the times sign (\(\times\)). When a number is followed by a letter, or two letters are juxtaposed, like \(69x\) or \(ab\), we treat the pair as if they had a times sign between them&mdash;they are to be multiplied together. But sometimes we use a center dot (\(\cdot\)) to indicate multiplication, like \(a\cdot b\) or \(5\cdot 7\). And we hardly ever see a division sign (\(\div\)); instead we just see a slash, or we indicate division with a fraction bar, like \(a/b\) or \(\frac{a}{b}\). Particularly in the latter case, the numerator and denominator are separately interpreted before the division is applied. One other way to indicate division is with a negative exponent: \(a/b = ab^{-1}\).</p>
 <p>&ldquo;Even with numbers, letters used for numbers, symbols for operations, parentheses, superscripts used for exponentiation, and subscripts as we saw for sequence elements, mathematicians found that they had to overload the meanings of certain glyphs. As we&rsquo;ll see when we talk more about functions, the string \(f(x)\) might interpreted as the function \(f\) applied to the argument \(x\), where \(f\) could be any single letter representing a function and where \(x\) might instead be an expression that is evaluated in the usual way. This leads to an ambiguity when interpreting something like \(a(b+c)\)&mdash;it might mean \(a\times(b+c)\) or it might mean apply the function \(a\) to the result of adding \(b\) and \(c\). Experience and context should tell you which interpretation to use.&rdquo;</p>
 <h2>Properties of Addition</h2>
@@ -417,6 +1081,12 @@ so \(z = 70\div 14 = 5\), which then gives \(y=12-3z=12-15=-3\) and then \(x=3-3
 <h2 onclick="this.parentElement.style.display='none'">Matrix multiplication exercise, click here to close</h2>
 <p>Select an element in the product matrix (initially a question mark) to input its value. Its value should be the sum of the products of the elements of the highlighted row of the first matrix with the corresponding elements of the highlighted column of the second matrix. A correct entry will turn green.</p>
 <p id='newmath'></p>
+</div>
+<div id="px" class="popup">
+<h2 onclick="this.parentElement.style.display='none'">Precedence exercise, click here to close</h2>
+<p>Here is an algebraic expression to evaluate.<p>
+<p id='expr'></p>
+<p>It combines numbers with various binary operations such as addition (\(+\)), subtraction (\(-\)), multiplication (\(&#x00d7;\)), division (\(&#x00f7;\)), and exponentiation. You can click on any \(+\), \(-\), \(&#x00d7;\), or \(&#x00f7;\) to have that operation performed; or you can click on an exponent to perform an exponentiation. But only operations that don&rsquo;t change the value of the expression will be performed. For example, you can&rsquo;t perform the \(+\) in \(3+4&#x00d7; 5\) until you&rsquo;ve performed the \(&#x00d7;\) &mdash; the value of the expression is \(23\), not \(35\). Exponents have to be evaluated to a single number before the exponentiation can be performed. Parentheses disappear when they enclose a single number, except for a negative or fractional base of an exponentiation, where the parentheses only disappear when the exponentiation is evaluated. If you click on an operation and nothing happens, see if you can figure out why that operation can&rsquo;t be performed.</p>
 </div>
 </body>
 </html>
