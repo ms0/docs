@@ -730,15 +730,15 @@ function math2tokens(m) {
   var a = [];    // output array
   var s = [];    // stack for array
   var operand = 0;    // last token is operand
-  var parity = 0;     // lsb 0 for +, 1 for -
+  var parity = 0;     // 0 for +, 1 for -
   for (i=0; i<m.length; i++) {
     switch (m[i][0]) {
     case '+' :
     case '-' :
       // replace with single + or - if operand; else it's unary
-      for (parity = 2, j = 0; j < m.length; j++) {
+      for (j = 0; j < m.length; j++) {
 	if (m[i][j] == '-') {
-	  parity |= 1;
+	  parity ^= 1;
 	}
       }
       if (operand) {
@@ -777,7 +777,7 @@ function math2tokens(m) {
 	throw new Error('syntax error at token '+i);
       }
       t = s.pop();
-      if (t.p == 3) {
+      if (t.p) {
 	t.a.push('-');
       }
       t.a.push(a.length == 1 ? a[0] : a);
@@ -792,6 +792,10 @@ function math2tokens(m) {
 	if (m[i+1] != '{' || m[i+3] != '}' || m[i+4] != '{' || m[i+6] != '}') {
 	  throw new Error('fraction syntax error');
 	}
+	if (m[i+7] == '^' && parity) {
+	  a.push('-');
+	  parity = 0;
+	}
 	a.push(math.multiply((-1)**parity,math.fraction(m[i+2],m[i+5])));
 	operand = 1;
 	parity = 0;
@@ -803,6 +807,10 @@ function math2tokens(m) {
 
     default :
       // should be an unsigned number
+      if (m[i+1] == '^' && parity) {
+	a.push('-');
+	parity = 0;
+      }
       a.push(math.fraction(m[i],(-1)**parity));
       operand = 1;
       parity = 0;
@@ -880,9 +888,11 @@ function operate(t,ps) {
   // check for unary minus not so simple, e.g. *-(...) or /-(...) or ^-(...)
   // note that in '-a-b+c', we can execute (-a)-b but not b+c
   c.splice(j-1,3,(v=op(c[j-1],c[j+1])));
-  // may need to do the rest of this in a loop as we collapse parens...
-  // c points to the array we just modified
-  // b is the list of ancestor arrays
+  --j;
+  // check if unary minus at j-1, in which case combine with result
+  if (j && c[j-1] == '-' && (j < 2 || typeof(c[j-2]) == 'string')) {
+    c.splice(j-1,2,(v=math.unaryMinus(v)));
+  }
   while (c.length == 1) {    // replacing parenthetical expr with number
     if (!b.length) {
       return;
