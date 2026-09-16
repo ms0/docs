@@ -953,6 +953,9 @@ function checktree(tree) {
 }
 </script>
 <style>
+[id^="C-"] {
+  cursor:pointer;
+}
 span {
   text-decoration:underline;
   cursor:context-menu;
@@ -1100,7 +1103,9 @@ so \(z = 70\div 14 = 5\), which then gives \(y=12-3z=12-15=-3\) and then \(x=3-3
 <h2 onclick="this.parentElement.style.display='none'">Precedence exercise, click here to close</h2>
 <p>Here is an algebraic expression to evaluate.<p>
 <p id='expr'></p>
-<p>It combines numbers with various binary operations such as addition (\(+\)), subtraction (\(-\)), multiplication (\(&#x00d7;\)), division (\(&#x00f7;\)), and exponentiation. You can click on any \(+\), \(-\), \(&#x00d7;\), or \(&#x00f7;\) to have that operation performed; or you can click on an exponent to perform an exponentiation. But only operations that don&rsquo;t change the value of the expression will be performed. For example, you can&rsquo;t perform the \(+\) in \(3+4&#x00d7; 5\) until you&rsquo;ve performed the \(&#x00d7;\) &mdash; the value of the expression is \(23\), not \(35\). Exponents have to be evaluated to a single number before the exponentiation can be performed. Parentheses disappear when they enclose a single number, except for a negative or fractional base of an exponentiation, where the parentheses only disappear when the exponentiation is evaluated. If you click on an operation and nothing happens, see if you can figure out why that operation can&rsquo;t be performed.</p>
+<p>It combines numbers with various binary operations such as addition (\(+\)), subtraction (\(-\)), multiplication (\(&#x00d7;\)), division (\(&#x00f7;\)), and exponentiation. You can click on any \(+\), \(-\), \(&#x00d7;\), or \(&#x00f7;\) to have that operation performed; or you can click on an exponent to perform an exponentiation. But only operations that don&rsquo;t change the value of the expression will be performed.<sup>a</sup><br>For example, you can&rsquo;t perform the \(\;+\;\) in \(\;3+4&#x00d7; 5\;\) until you&rsquo;ve performed the \(\;&#x00d7;\;\) &mdash;the value of the expression is \(23\), not \(35\). Exponents have to be evaluated to a single number before the exponentiation can be performed. Parentheses disappear when they enclose a single number, except for a negative or fractional base of an exponentiation, where the parentheses only disappear when the exponentiation is evaluated. If you click on an operation and nothing happens, see if you can figure out why that operation can&rsquo;t be performed.<sup>b</sup></p>
+<p><sup>a</sup>In addition to the operations that strictly follow the precedence rules, there may be other performable operations. For example, based on the property of associativity, which both addition and multiplication possess, either \(\;+\;\) can be performed in \(\;3+4+5\;\) because \(\;(3+4)+5 = 3+(4+5)\;\). But subtraction and division are not associative, so you can&rsquo;t perform the \(\;+\;\) in \(\;3-4+5\;\).</p>
+<p><sup>b</sup>If you have a hoverable pointing device, the cursor will become a pointer when hovering over a performable operation.</p>
 </div>
 </body>
 </html>
