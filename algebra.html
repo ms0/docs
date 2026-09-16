@@ -890,8 +890,8 @@ function operate(t,ps) {
   // note that in '-a-b+c', we can execute (-a)-b but not b+c
   c.splice(j-1,3,(v=op(c[j-1],c[j+1])));
   --j;
-  // check if unary minus at j-1, in which case combine with result
-  if (j && c[j-1] == '-' && (j < 2 || typeof(c[j-2]) == 'string')) {
+  // check if unary minus at j-1, in which case combine with result unless ^
+  if (j && c[j-1] == '-' && (j < 2 || typeof(c[j-2]) == 'string') && c[j+1] != '^') {
     c.splice(--j,2,(v=math.unaryMinus(v)));
   }
   while (c.length == 1) {    // replacing parenthetical expr with number
@@ -900,12 +900,12 @@ function operate(t,ps) {
     }
     j = 1*s.pop();
     (c=b.pop())[j] = v;    // replace
-    // check if unary minus at j-1, in which case combine with result
-    if (j && c[j-1] == '-' && (j < 2 || typeof(c[j-2]) == 'string')) {
+    // check if unary minus at j-1, in which case combine with result unless ^
+    if (j && c[j-1] == '-' && (j < 2 || typeof(c[j-2]) == 'string') && c[j+1] != '^') {
       c.splice(--j,2,(v=math.unaryMinus(v)));
     }
   }
-  if (v < 0 && j) {
+  if (v < 0 && j && c[j+1] != '^') {
     // see if - can be combined with previous op
     if (c[j-1] == '+') {    // + is always binary
       c[j] = math.unaryMinus(v);
