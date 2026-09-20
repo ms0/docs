@@ -569,7 +569,6 @@ ParseTree.prototype.simplify = function() {    // attempt to propagate signs
   this.right.simplify();
   return this;
 }
-			 
 
 ParseTree.prototype.math = function() {
   /* left op right, or -(left op right)
@@ -579,14 +578,29 @@ ParseTree.prototype.math = function() {
   case '' :
     return ''+this.val;
   case '-' :
+    if (this.right.val > 0) {
+      s = this.left.math() + '-';
+      if (this.right.op == '+' || this.right.op == '-') {
+	s += '\\left(' + this.right.math() + '\\right)';
+      } else {
+	s += this.right.math();
+      }
+      if (this.val < 0) {
+	return '-\\left(' + s + '\\right)';
+      } else {
+	return s;
+      }
+    } else {    // just convert to +
+      this.right.val *= -1;
+      this.op = '+';
+    }
   case '+' :
-    s = this.left.math() + this.op + this.right.math();
+    s = this.left.math() + '+' + this.right.math();
     if (this.val < 0) {
-      return '-(' + s + ')';
+      return '-\\left(' + s + '\\right)';
     } else {
       return s;
     }
-    break;
   case '\u00d7' :    // x
     if (this.left.op == '') {
       s = '' + (this.left.val *= this.val);
@@ -594,14 +608,14 @@ ParseTree.prototype.math = function() {
     } else {
       s = this.val < 0 ? '-' : '';
       if (this.left.op == '+' || this.left.op == '-') {
-	s += '(' + this.left.math() + ')';
+	s += '\\left(' + this.left.math() + '\\right)';
       } else {
 	s += this.left.math();
       }
     }
     s += this.op;
     if (this.right.op == '+' || this.right.op == '-') {
-      s += '(' + this.right.math() + ')';
+      s += '\\left(' + this.right.math() + '\\right)';
     } else {
       s += this.right.math();
     }
@@ -612,7 +626,7 @@ ParseTree.prototype.math = function() {
     } else {
       s = this.val < 0 ? '-' : '';
       if (this.left.op == '+' || this.left.op == '-') {
-	s += '(' + this.left.math() + ')';
+	s += '\\left(' + this.left.math() + '\\right)';
       } else {
 	s += this.left.math();
       }
@@ -620,14 +634,14 @@ ParseTree.prototype.math = function() {
     s += this.op;
     if (this.right.op == '+' || this.right.op == '-' ||
 	this.right.op == '\u00d7' || this.right.op == '\u00f7') {
-      s += '(' + this.right.math() + ')';
+      s += '\\left(' + this.right.math() + '\\right)';
     } else {
       s += this.right.math();
     }
     return s;
   case '^' :
     if (this.left.op || this.left.val < 0) {
-      s = '(' + this.left.math() + ')';
+      s = '\\left(' + this.left.math() + '\\right)';
     } else {
       s = this.left.math();
     }
@@ -639,7 +653,7 @@ ParseTree.prototype.math = function() {
   default :
     return '';
   }
-}
+}			 
 
 /****************************************************************
   T is tokenized math expression, a tree
@@ -663,6 +677,55 @@ var T;    // tokenized math expression
 function postmath(tree) {
   T = math2tokens(tree.simplify().math());
   return tokens2math(T,'C');
+}
+
+function evalT(t) {
+  // t is an array with numbers, operators, and subarrays
+  var p;
+  var i;
+  t = t.slice();    // make destroyable copy
+  for (i=0; i<t.length; i++) {    // handle parens and braces
+    if (Array.isArray(t[i])) {
+      t[i] = evalT(t[i]);
+      if (t[i-1] == '-' && t[i+1] != '^' && (i<2 || typeof(t[i-2]) == 'string')) {
+	t.splice(i-1,2,math.unaryMinus(t[i]));
+      }
+    }
+  }
+  for (i=0; i<t.length; i++) {    // handle exponentiation
+    if (t[i] == '^') {
+      t.splice(i-1,3,math.pow(t[i-1],t[i+1]));
+      --i;
+    }
+  }
+  for (i=0; i<t.length; i++) {    // handle unary minus
+    if (t[i] == '-' && (!i || typeof(t[i-1]) == 'string')) {
+      if ((p = '+-'.indexOf(t[i-1])) < 0) {
+	t.splice(i,2,math.unaryMinus(t[i+1]));
+      } else {    // not unary
+	t.splice(i-1,2,'-+'[p]);
+      }
+    }
+  }
+  for (i=0; i<t.length; i++) {    // handle * and /
+    if (t[i] == '\u00d7') {
+      t.splice(i-1,3,math.multiply(t[i-1],t[i+1]));
+      --i;
+    } else if (t[i] == '\u00f7') {
+      t.splice(i-1,3,math.divide(t[i-1],t[i+1]));
+      --i;
+    }
+  }
+  for (i=0; i<t.length; i++) {    // handle + and -
+    if (t[i] == '+') {
+      t.splice(i-1,3,math.add(t[i-1],t[i+1]));
+      --i;
+    } else if (t[i] == '-') {
+      t.splice(i-1,3,math.subtract(t[i-1],t[i+1]));
+      --i;
+    }
+  }
+  return t[0];
 }
 
 function tokens2math(t,p) {
@@ -719,13 +782,14 @@ function tokenize(m) {
   return m.match(token);
 }
 
-function math2tokens(m) {
+function math2tokens(m,A) {
   // given a restricted TeX math expression, produces an array of tokens
   // tokens are unary '-', binary operators, signed math.js numbers, or
   // arrays representing parenthesized or braced subexpressions
   // unary minus only appears before parenthesized subexpression
   // braced subexpressions only occur as exponents
   // tokens: array==>subexpr; string==>operator; else math.js number
+  // if array A is present, store cssIDs in it
   var i,j;
   var m = tokenize(m);    // input array
   var a = [];    // output array
@@ -801,6 +865,25 @@ function math2tokens(m) {
 	operand = 1;
 	parity = 0;
 	i += 6;
+      } else if (m[i]=='\\cssId') {
+	// cssId is string of letters and/or numbers separated by -
+	if (m[++i] != '{') {
+	  throw new Error('bad cssId');
+	}
+	var id = [];
+	while ((j = m[++i]) && j != '}') {
+	  if (j != '-' && /^\d+$/.test(j)) {
+	    id.push(j);
+	  }
+	}
+	if (A) {
+	  A.push(id.join('-'));
+	}
+	if (typeof(m[i+2]) == 'string' && m[i+3] == '}') {
+	  m.splice(i+1,3,m[i+2]);
+	}
+      } else if (m[i]=='\\left' || m[i]=='\\right') {
+	// ignore these
       } else {
 	throw new Error('unrecognized token: '+m[i]);
       }
