@@ -1,0 +1,540 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js">
+</script>
+<script>
+/****************************************************************
+Ideas:
+       draw counting numbers one-by-one as dots labeled with digits
+                labeled also with sets {}, {{}}, {{},{{}}}, ...
+       add rationals: halves, then thirds, then fourths, ...
+                labeling only newly-added fractions
+       add a few algebraics and transcendentals
+       show gaussian integers
+       discussions: sets, algebraic numbers, transcendentals
+                ordinals and cardinals; well-ordering
+       modular [clock] arithmetic; additive group; ring
+                                   multiplicative group (coprime, gcd)
+                                   field if above covers all but 0 (i.e. Z_p)
+                clock animation?
+       positional notation: decimal, binary, hex, base i-1
+                animation: "counting" on complex plane
+                for base 1-i, first convert gaussian integer to hex
+                   (separately for real and imaginary parts, then
+                    convert each position independently)
+                   (for negative real or imag, may need to convert to
+                    -a+b, where -a is an extra set of bits to the left)
+           p-adic numbers
+       finite fields [besides just mod p?]
+                interactive secret sharing?
+       matrices and Gaussian elimination
+
+****************************************************************/
+function gcd(a,b) {
+  var t;
+  while (b) {
+    t = b;
+    b = a%b;
+    a = t;
+  }
+  return Math.abs(a);
+}
+    
+function xgcd(a,b) {    // extended gcd: return [g,u,v] where g=ua+vb
+  var c=1, d=0, e=0, f=1;
+  var g,h;
+  var q,r;
+  while (b) {
+    q = Math.floor(a/b);
+    r = a - q*b;
+    g = e;
+    h = f;
+    e = c-q*e;
+    f = d-q*f;
+    c = g;
+    d = h;
+    a = b;
+    b = r;
+  }
+  return a ? a < 0 ? [-a,-c,-d] : [a,c,d] : [0,0,0];
+}
+
+
+var cvc;    // complex canvas (base i-1)
+var ctc;    // complex context (base i-1)
+
+var cvs;    // canvas
+var ctx;    // context  
+
+var cwps=12;    // point size
+var ccps=8;
+var cwfigwid=7; // figure width
+var cwr = 1;    // radius of dots
+
+var cwidth;    // width of canvases
+var cheight;   // height of canvas
+var bheight;
+
+function init() {
+  cwidth = document.body.offsetWidth;
+  cheight = 205+48;
+  cvs = document.getElementById('realline');
+  cvs.width = cwidth;
+  cvs.height = cheight;
+  ctx = cvs.getContext('2d');
+  ctx.lineWidth = .5;
+  ctx.strokeStyle='black';
+  ctx.fillStyle='black';
+  ctx.textAlign='center';
+  ctx.setTransform(1,0,0,1,cwidth/2,cheight/2);
+  kheight = 120;
+  cvk = document.getElementById('clock');
+  cvk.width = cwidth;
+  cvk.height = kheight;
+  ctk = cvk.getContext('2d');
+  ctk.lineWidth = 1;
+  ctk.strokeStyle='black';
+  ctk.fillStyle='black';
+  ctk.textAlign='center';
+  ctk.setTransform(1,0,0,1,cwidth/2,kheight/2);
+  ticks = 0;
+  tick();
+  cvc = document.getElementById('baseim1');
+  cvc.width = cwidth;
+  bheight = cwidth*7/8;
+  cvc.height = bheight;
+  ctc = cvc.getContext('2d');
+  ctc.lineWidth = 1;
+  ctc.strokeStyle='black';
+  ctc.fillStyle='black';
+  ctc.textAlign='center';
+  ctc.setTransform(1,0,0,1,cwidth/2,bheight/2);
+//  animatecount(500);
+}
+
+var cvk;    // clock canvas
+var ctk;    // clock context
+var kheight;    // height of clock canvas
+
+function drawclock() {
+  const cwps=9;
+  ctk.clearRect(-cwidth/2,-kheight/2,cwidth,kheight);
+  ctk.beginPath();
+  ctk.arc(0,0,kheight/2-1,0,Math.PI*2,true);
+  ctk.closePath();  
+  ctk.stroke();
+  ctk.font = cwps+"px Arial";
+  var i;
+  var a,t;
+  for (i=0;i<24;i++) {
+    ctk.beginPath();
+    ctk.fillText(i+'',0,cwr+cwps-kheight/2);
+    ctk.rotate(Math.PI/12);
+  }
+}		 
+
+var ticker;    // timer for clock
+var ticks = 0;
+
+function tick() {
+  ctk.setTransform(1,0,0,1,cwidth/2,kheight/2);
+  drawclock();
+  ctk.rotate(Math.PI/12*ticks);
+  ctk.beginPath();
+  ctk.moveTo(0,0);
+  ctk.lineTo(0,cwr+cwps-kheight/2);
+  ctk.stroke();
+  ticks = ++ticks%24;
+}  
+
+var timer;     // for animations
+var counter;
+
+function animatecount(dt) {
+  ctx.clearRect(-cwidth/2,-cheight/2,cwidth,cheight);
+  if (dt) {
+    counter = 0;
+    timer = setInterval(drawcount,dt);
+  } else {
+    for (counter=0; counter<=4;) {
+      drawcount()
+    }
+  }
+}
+
+function drawcount() {
+  if (counter >= 4) {
+    timer = clearInterval(timer);
+  }
+  ctx.font = cwps+"px Arial";
+  var x = counter * (cwidth-16)/8;
+  ctx.beginPath();
+  ctx.arc(x,0,cwr,0,Math.PI*2,true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.fillText(counter+'',x,-parseFloat(ctx.font)*.75);
+//  ctx.beginPath();
+//  ctx.fillText(sets[counter],x,20);
+  counter++;
+}
+
+function animatenegs(dt) {
+  if (dt) {
+    counter = 1;
+    timer=setInterval(drawnegs,dt);
+  } else {
+    for (counter=1; counter<=4;) {
+      drawnegs();
+    }
+  }
+}
+
+function drawnegs() {
+  if (counter >= 4) {
+    timer = clearInterval(timer);
+  }
+  ctx.font = cwps+"px Arial";
+  var x = counter * (16-cwidth)/8;
+  ctx.beginPath();
+  ctx.arc(x,0,cwr,0,Math.PI*2,true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.fillText(-counter+'',x,-parseFloat(ctx.font)*.75);
+  counter++;
+}
+
+var ftimer;
+var fcounter;
+
+function animatefracs(dt) {
+  fcounter = 2;
+  ftimer=setInterval(drawallfracs,dt)
+}
+
+function drawallfracs() {
+  if (fcounter > 9) {
+    ftimer = clearInterval(ftimer);
+    if (fcounter < 30) {
+      ftimer = setInterval(drawallfracs,20);
+    }
+  }
+  animatecount(0);
+  animatenegs(0);
+  var i;
+  for (i=2; i<=fcounter; i++) {
+    drawfracs(i,i==fcounter && fcounter < 10);
+  }
+  fcounter++;
+}
+
+function drawfracs(d,txt) {    // d is denominator; txt -> show fraction text
+  var n;    // numerator
+  var g;
+  var t;
+  var x;
+  var nt;    // numerator text
+  var dt;    // denominator text
+  const cwps = 9;
+  ctx.font = cwps+"px Arial";
+  for (n=-4*d+1; n < 4*d; n++) {
+    g = gcd(n,d);
+    if (g==d) continue;
+    x = n*(cwidth-16)/8/d;
+    ctx.beginPath();
+    ctx.arc(x,0,cwr,0,Math.PI*2,true);
+    ctx.closePath();
+    ctx.fill();
+    if (txt) {
+      nt = n/g+'';
+      dt = d/g+'';
+      ctx.beginPath();
+      ctx.fillText(nt,x,-15);
+      t = '_'.repeat(Math.max(nt.length,dt.length));
+      ctx.fillText(t,x,-15);
+      ctx.fillText(dt,x,-15+cwps+cwr);
+    }
+  }
+}
+
+const phi = (1 + 5**.5)/2;
+
+function drawirrational(x,t) {
+  ctx.font = cwps+"px Arial";
+  ctx.strokeStyle = 'red';
+  x *= (cwidth-16)/8;
+  ctx.beginPath();
+  ctx.moveTo(x,-cwr);
+  ctx.lineTo(x,cwps*.75);
+  ctx.stroke();
+//  ctx.arc(x,0,cwr,0,Math.PI*2,true);
+//  ctx.closePath();
+//  ctx.fill();
+  ctx.strokeStyle = 'black';
+  ctx.fillText(t,x,cwps*1.5);
+}
+
+function drawirrationals() {
+  drawirrational(Math.SQRT2,'\u221A2');
+  drawirrational(phi,'\u03a6');
+  drawirrational(Math.E,'e');
+  drawirrational(Math.PI,'\u03c0');
+}
+
+function drawgaussians(ctx) {
+  var r,i;
+  ctx.font = cwps+"px Arial";
+  for (r=-4; r<5; r++) {
+    for (i=-1; i<2; i+=2) {
+      drawgaussian(ctx,r,i,(cwidth-16)/8);
+    }
+  }
+}
+
+function drawgaussian(ctx,r,i,f) {
+  x = r * f;
+  y = i * -f;
+  ctx.beginPath();
+  ctx.arc(x,y,cwr,0,Math.PI*2,true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  var a = Math.abs(r);
+  var b = Math.abs(i);
+  b = b > 1 ? b : '';
+  a = (r < 0 ? '\u2212' : '') + a;
+  b = i ? (i < 0 ? '\u2212' : r ? '+' : '') + b + '\u{1d456}' : '';
+  ctx.fillText(r || !i ? a + b : b,x,y-parseFloat(ctx.font)*.75);
+}
+
+const sets = ['{}',
+	      '{{}}',
+	      '{{},{{}}}',
+	      '{{},{{}},{{},{{}}}}',
+	      '{{},{{}},{{},{{}}},{{},{{}},{{},{{}}}}}'];
+
+function bin2complex(n) {
+  var p = [1,0];
+  var c = [0,0];
+  while (n) {
+    if (n&1) {
+      c[0] += p[0];
+      c[1] += p[1];
+    }
+    p[1] = p[0] - p[1];
+    p[0] = p[1] - 2*p[0];
+    n >>= 1;
+  }
+  return c;
+}						       
+
+var ctimer;
+var ccounter = 0;
+
+function animatecc(o) {
+  ctimer = clearInterval(ctimer);
+  cvc.scrollIntoView(true);
+  ctc.clearRect(-cwidth/2,-bheight/2,cwidth,bheight);
+  ccounter = 0;
+  ctimer = setInterval(drawcc,250);
+}
+
+function drawcc() {
+  if (ccounter > 256) {
+    ctimer = clearInterval(ctimer);
+    return;
+  }
+  ctc.textAlign = 'right';
+  ctc.font = cwps+"px Courier";
+  ctc.fillStyle = ccounter ? ccounter&(ccounter-1) ? 'black' : 'red' : 'green';
+  ctc.clearRect(cwidth/2,bheight/2,-8*cwps,-cwps);
+  ctc.fillText(ccounter.toString(2),cwidth/2-1,bheight/2-1);
+  ctc.textAlign = 'center';
+  ctc.font = ccps+"px Arial";
+  var z = bin2complex(ccounter);
+  drawgaussian(ctc,z[0],z[1],(cwidth-16)/32);
+  ccounter++;
+}
+
+function showpopup(o,s) {
+  var b = document.body.getClientRects()[0];
+  var r = o.getClientRects()[0];
+  o = document.getElementById(s);
+  o.style.display='block';
+  var q = o.getClientRects()[0];
+  o.style.position = 'absolute';
+  o.style.left = Math.max(window.scrollX,
+			  Math.min(window.scrollX+window.innerWidth-q.width,
+				   (r.width-q.width)/2))+'px';
+  o.style.top = Math.max(window.scrollY,
+			 Math.min(window.scrollY+window.innerHeight-q.height,
+				  (r.top+r.bottom-q.height)/2-b.top))+'px';
+}
+
+const sgn=Math.sign;
+</script>
+<style>
+span {
+  text-decoration:underline;
+  cursor:context-menu;
+}
+span.nobreak {
+  text-decoration:none;
+  cursor:text;
+  display:inline-block;
+  white-space:no-wrap;
+}
+h1 {
+  text-align:center;
+  font-size:18pt;
+}
+h2 {
+  text-align:center;
+  font-size:14pt;
+}
+canvas {
+  display:block;
+  margin:0 auto;
+}
+body {
+  max-width:820px;
+}
+.popup {
+  background-color:white;
+  display:none;
+  z-index:1;
+  position:absolute;
+  top:0;
+  left:0;
+  padding:6px;
+  margin:6px;
+  border:1px solid black;
+  max-width:inherit;
+}
+p.top {
+  background-color:white;
+  z-index:1;
+  position:fixed;
+  left:0;top:0;
+  text-align:left;
+  font-size:.75em;
+  margin:0;
+}
+table {
+  border-spacing:12px;
+  text-align:center;
+}
+table.code {
+  margin:0 auto;
+  text-align:left;
+  border-collapse:collapse;
+  border-spacing:20px 0;
+}
+table.code caption {
+  font-weight:bold
+}
+table.optables {
+  margin:0 auto;
+}
+table.optable {
+  border-collapse:collapse;
+  border-spacing:12px 0;
+}
+table.optable tr:first-child th {
+  border-bottom:1px solid black;
+}
+table.optable tr th:first-child {
+  border-right:1px solid black;
+}
+table.optable th {
+  font-size:8pt;
+  padding:0 3px;
+}
+table.optable td {
+  font-size:8pt;
+  padding:0 3px;
+}
+.center {
+  text-align:center;
+}
+.left {
+  text-align:left;
+}
+ul {
+  list-style-type:none;
+}
+</style>
+</head>
+<body onload="init()" onresize="init()">
+<p class='top'>
+  <a href='fib.html'>Fi &amp; Lu</a>&nbsp;
+  <a href='area.html'>Area</a>&nbsp;
+  <a href='algebra.html'>Algebra</a>
+  <a href='trig.html'>Trigonometry</a>&nbsp;
+  <a href='func.html'>Functions</a>&nbsp;
+  <a href='complex.html'>Complex Numbers</a>&nbsp;
+  <a href='calc.html'>Calculus</a>
+  <a href='number.html'>Numbers</a>
+</p>
+<h1>Fi and Lu wonder: What is a Number?</h1>
+<canvas id="realline"></canvas>
+  <p>Having explored a wide variety of math concepts, Fi and Lu began to wonder what things should be called numbers. Of course there are the <span onclick='animatecount(500)'>counting numbers</span>: 0, 1, 2, 3,&mldr; which everyone recognizes as numbers.
+  These numbers can be added and multiplied, but when we try to undo addition, we have to include <span onclick='animatenegs(500)'>negative numbers</span> and so end up with all the integers. Similarly, when we then try to undo multiplication, we have to include <span onclick='animatefracs(1000)'>fractions</span> and so end up with all the rational numbers. We&rsquo;ve seen how the rational numbers can be laid out on a line. And we&rsquo;ve seen that there are <span onclick='drawirrationals()'>points on that line that don&rsquo;t correspond to rational numbers</span> even though we can find rational numbers arbitrarily close. When we include all those points, we end up with the real numbers, and we call the line of real numbers the real line. Most everyone thinks that real numbers are numbers.</p>
+<p>Later, Fi & Lu saw how to escape the real line and find <span onclick='drawgaussians(ctx)'>complex numbers</span> that also can be added and multiplied, subtracted and divided. But unlike real numbers, there isn&rsquo;t a natural linear ordering of complex numbers. So are complex numbers still numbers?</p>
+<p>Even the complex plane can be escaped, but we have to add two more dimensions and give up yet another property. Multiplication can no longer be commutative: \(a\times b\) is not always the same as \(b\times a\) for quaternions. So, are quaternions still numbers?</p>
+<p>Mathematicians have listed various properties that numbers might possess, and named various structures that possess some or all of those properties. The structures comprise one or more sets of objects and one or more operators on those objects (such as addition (usually written as \(+\)), multiplication (usually written as \(\times\) or \(\cdot\) when not implicit), negation (<i>aka</i> additive inverse) (usually written \(-x\)), (multiplicative) inverse (often written \(x^{-1}\)), subtraction (usually written as \(-\)), and division (sometimes written as \(\div\) or \(/\)), as well as comparison operators <span class='nobreak'>(\(=\ \neq\ <\ \leq\ \geq\ \gt\))).</span> Sometimes a set of objects has one or more special elements, such as an additive identity (usually written as \(0\)), or a multiplicative identity (usually written as \(1\)). Negation requires an additive identity, and inverse requires a multiplicative identity. Note that, typically, subtraction and division are not specifically included; rather subtraction is just addition with negation of the second argument, and division is just multiplication with the inverse of the second argument. Similarly, the equality operation (\(=\)) is implicit, and if there is an ordering, only &lsquo;less than&rsquo; (\(<\)) is explicit, with all the others <span class='nobreak'>(\(\le\ \geq\ >\))</span> being implicit.</p>
+<p>The below table lists a few common structure types. All the operators listed are associative, <i>i.e.</i>, <span class='nobreak'>\(a+(b+c) = (a+b)+c\)</span> and <span class='nobreak'>\(a\times(b\times c) = (a\times b)\times c\).</span> And for the listed structures with both \(+\) and \(\times\), multiplication distributes over addition, <i>i.e.</i>, <span class='nobreak'>\(a\times (b+c) = (a\times b) + (a\times c)\)</span> and <span class='nobreak'>\((a+b)\times c = (a\times c) + (b\times c)\).</span> The operators required to be commutative for the listed structures are listed as commutative operators; commutativity is not prohibited from other structures&rsquo; operators. Similarly, even if multiplicative inverses (\(x^{-1}\)) are not listed, some elements may still have inverses. Even when multiplicative inverses <i>are</i> listed, \(0\) never has a multiplicative inverse. So fields are division rings, and division rings are rings, while abelian groups are groups (so that using \(+\) for the operator is not required). You may note that a ring with just its addition operator forms an abelian group; and a division ring without its \(0\) and together with its multiplication operator forms a group.
+<table>
+<tr><th class='left'>Structure Name:<th>Group</th><th>Abelian Group</th><th>Semiring</th><th>Ring</th><th>Division Ring</th><th>Field</th></tr>
+<tr><td class='left'>Operators</td><td>\(\cdot\text{ or }\circ\text{ or }\times\)</td><td>\(+\)<td>\(+\ \times\)</td><td>\(+\ \times\)</td><td>\(+\ \times\)</td><td>\(+\ \times\)</td></tr>
+<tr><td class='left'>Commutative Operators</td><td>\(+\)</td><td>\(+\)<td>\(+\)</td><td>\(+\)</td><td>\(+\)</td><td>\(+\ \times\)</td></tr>
+<tr><td class='left'>Identities</td><td>\(e \text{ or } 1\)</td><td>\(0\)</td><td>\(0\ \ 1\)</td><td>\(0\ \ 1\)</td><td>\(0\ \ 1\)</td><td>\(0\ \ 1\)</td></tr>
+<tr><td class='left'>Inverses of \(x\)</td><td>\(x^{-1}\)</td><td>\(-x\)</td><td></td><td>\(-x\)</td><td>\(-x\ \ x^{-1}\)</td><td>\(-x\ \ x^{-1}\)</td></tr>
+<tr><td class='left'>Example</td><td>Permutations<br>of \(n\) objects,<br>\(\mathrm{S}_n\)</td><td>Integers,<br>\(\mathbb{Z}\)</td><td>Counting numbers,<br>\(\mathbb{N}\)</td></td><td>\(n\times n\) matrices<br>of reals,<br>\(M_{n\times n}(\mathbb{R})\)</td><td>Quaternions,<br>\(\mathbb{H}\)</td><td>Rational numbers,<br>\(\mathbb{Q}\)</td></tr>
+</table>
+<p>You may have noticed that, except for \(\mathrm{S}_n\), all the examples above are infinite structures. Are there any finite structures whose elements could be called numbers? A clue emerges when we watch a 24-hour clock. The hour <span onclick='ticker=ticker||setInterval(tick,1000);'>advances</span> from 0 through 23 and then repeats. If we want to know the hour that is \(h\) hours in the future, we add \(h\) to the current hour and take the remainder when divided by 24.</p>
+<canvas id='clock' onclick='ticker=ticker?clearInterval(ticker):setInterval(tick,1000);'></canvas>
+<p>More generally, we can choose any integer \(m > 0\) and represent each integer \(x\) with its remainder when divided by \(m\), written \(x\bmod m\). We can then modify addition and multiplication by replacing the usual result by its remainder when divided by \(m\). This is called clock arithmetic, more formally known as modular arithmetic with modulus \(m\). It&rsquo;s not hard to see, at least for \(m > 1\), that the resulting structure comprising \(0\) through \(m-1\) is a ring, usually written as \(\mathbb{Z}/m\mathbb{Z}\). It turns out that if \(m\) is prime, it&rsquo;s a <span onclick="showpopup(this,'xgcd')">field</span>!
+</p>There are other finite fields. In fact, for any prime \(p\) and integer power \(n > 0\), there is exactly one field with \(p^n\) elements, \(\text{GF}(p^n)\). We've already seen that \(\text{GF}(p) = \mathbb{Z}/p\mathbb{Z}\); for \(n>1\), \(\text{GF}(p^n)\) is harder to describe, and we have a choice how to write the elements&mdash;while it&rsquo;s natural to write \(0,1,\dots,p-1\) for the corresponding sums of repeated \(1\)s, we have choices for the other elements. Note that if you sum \(p\) copies of any element of \(\text{GF}(p^n)\), the result is \(0\); \(p\) is called the characteristic of the field.</p>
+<p>As an example, here are the addition and multiplication tables for a ring and a field, each with nine elements. If you look carefully at the tables for \(\text{GF}(9)\), you will find \(\mathbb{Z}/3\mathbb{Z}=\text{GF}(3)\) embedded in the upper left corner.</p>
+<table class='optables'><caption>\(\mathbb{Z}/9\mathbb{Z}\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\quad\text{GF}(9)\)</caption><tr><td>
+<table class='optable'><tr><th>+</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr><th>0</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td></tr><tr><th>1</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>0</td></tr><tr><th>2</th><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td></tr><tr><th>3</th><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td></tr><tr><th>4</th><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td><td>3</td></tr><tr><th>5</th><td>5</td><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td></tr><tr><th>6</th><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr><tr><th>7</th><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td></tr><tr><th>8</th><td>8</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td></tr></table></td><td>
+<table class='optable'><tr><th>&times;</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr><th>0</th><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th>1</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td></tr><tr><th>2</th><td>0</td><td>2</td><td>4</td><td>6</td><td>8</td><td>1</td><td>3</td><td>5</td><td>7</td></tr><tr><th>3</th><td>0</td><td>3</td><td>6</td><td>0</td><td>3</td><td>6</td><td>0</td><td>3</td><td>6</td></tr><tr><th>4</th><td>0</td><td>4</td><td>8</td><td>3</td><td>7</td><td>2</td><td>6</td><td>1</td><td>5</td></tr><tr><th>5</th><td>0</td><td>5</td><td>1</td><td>6</td><td>2</td><td>7</td><td>3</td><td>8</td><td>4</td></tr><tr><th>6</th><td>0</td><td>6</td><td>3</td><td>0</td><td>6</td><td>3</td><td>0</td><td>6</td><td>3</td></tr><tr><th>7</th><td>0</td><td>7</td><td>5</td><td>3</td><td>1</td><td>8</td><td>6</td><td>4</td><td>2</td></tr><tr><th>8</th><td>0</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td></tr></table></td><td>
+&nbsp;&nbsp;</td><td>
+<table class='optable'><tr><th>+</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr><th>0</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td></tr><tr><th>1</th><td>1</td><td>2</td><td>0</td><td>4</td><td>5</td><td>3</td><td>7</td><td>8</td><td>6</td></tr><tr><th>2</th><td>2</td><td>0</td><td>1</td><td>5</td><td>3</td><td>4</td><td>8</td><td>6</td><td>7</td></tr><tr><th>3</th><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td></tr><tr><th>4</th><td>4</td><td>5</td><td>3</td><td>7</td><td>8</td><td>6</td><td>1</td><td>2</td><td>0</td></tr><tr><th>5</th><td>5</td><td>3</td><td>4</td><td>8</td><td>6</td><td>7</td><td>2</td><td>0</td><td>1</td></tr><tr><th>6</th><td>6</td><td>7</td><td>8</td><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr><tr><th>7</th><td>7</td><td>8</td><td>6</td><td>1</td><td>2</td><td>0</td><td>4</td><td>5</td><td>3</td></tr><tr><th>8</th><td>8</td><td>6</td><td>7</td><td>2</td><td>0</td><td>1</td><td>5</td><td>3</td><td>4</td></tr></table></td><td>      
+<table class='optable'><tr><th>&times;</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr><tr><th>0</th><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th>1</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td></tr><tr><th>2</th><td>0</td><td>2</td><td>1</td><td>6</td><td>8</td><td>7</td><td>3</td><td>5</td><td>4</td></tr><tr><th>3</th><td>0</td><td>3</td><td>6</td><td>2</td><td>5</td><td>8</td><td>1</td><td>4</td><td>7</td></tr><tr><th>4</th><td>0</td><td>4</td><td>8</td><td>5</td><td>6</td><td>1</td><td>7</td><td>2</td><td>3</td></tr><tr><th>5</th><td>0</td><td>5</td><td>7</td><td>8</td><td>1</td><td>3</td><td>4</td><td>6</td><td>2</td></tr><tr><th>6</th><td>0</td><td>6</td><td>3</td><td>1</td><td>7</td><td>4</td><td>2</td><td>8</td><td>5</td></tr><tr><th>7</th><td>0</td><td>7</td><td>5</td><td>4</td><td>2</td><td>6</td><td>8</td><td>3</td><td>1</td></tr><tr><th>8</th><td>0</td><td>8</td><td>4</td><td>7</td><td>3</td><td>2</td><td>5</td><td>1</td><td>6</td></tr></table></td>
+</tr></table>
+<h2>Representing numbers</h2>
+<p>In school, we learn about decimals, which is a way of representing real numbers. Decimal representation is an example of positional notation, where the value of a digit depends on where it is placed. Decimal representation is also called base ten or radix ten, since each digit is worth ten times as much as it would be if it were one place to the right. We use a period (called a decimal point) to separate the one&rsquo;s place from the tenth&rsquo;s place. As you might guess, there&rsquo;s nothing special about ten, and any integer base greater than one can be used as a radix, as long as you have radix-many symbols to serve as &ldquo;digits&rdquo;. The simplest radix is two (known as <i>binary</i>), for which we only need two symbols: 0 and 1 (called <i>bits</i>). The addition and multiplication tables are rather easy to memorize; the only downside is that you generally need over three times as many binary bits as decimal digits to represent the same number. For humans, we can group the bits in threes (for radix eight, or <i>octal</i>, using digits 0 through 7 as symbols) or fours (for radix sixteen, or <i>hexadecimal</i>, using digits 0 through 9 and letters a through f as the sixteen symbols). When it&rsquo;s not obvious what the radix is, the radix as represented in decimal is subscripted to the representation, <i>e.g.</i>, \(69_{16} = 105_{10}\) and \(105_8 = 69_{10}\).</p>
+<p>You might note that plain positional notation can only represent nonnegative real numbers. Negative numbers are represented by preceding the corresponding positive number&rsquo;s representation with a minus sign. What you might find amazing is that you can use \(i-1\) as a radix, and just the bits 0 and 1, to represent any complex number, with no other symbols required besides a mark (typically a period or comma) to demarcate the one&rsquo;s place. Doing arithmetic with this representation is a bit complicated, because two is represented as 1100, <i>i.e.</i>, \(1+1=1100_{i-1}\). To get a sense of radix \(i-1\), we sequentially <span onclick="animatecc()">display</span> on the complex plane below the first 257 nonnegative integers as written in binary but interpreted as radix \(i-1\).</p>
+<canvas id='baseim1' onclick='ctimer=ctimer?clearInterval(ctimer):setInterval(drawcc,250);'></canvas>
+<div id='xgcd' class="popup" onclick="this.style.display='none'">
+<h2>When is \(\mathbb{Z}/m\mathbb{Z}\) a field?</h2>
+<p>For \(\mathbb{Z}/m\mathbb{Z}\) to be a field, every nonzero element must have an inverse. If \(m\) is not prime, it is the product of two smaller nonzero integers: \(m=ab\). So, in \(\mathbb{Z}/m\mathbb{Z}\), \(ab=0\). If \(b\) had an inverse, we&rsquo;d have \(a = abb^{-1} = 0b^{-1} = 0\), but \(a\) is a nonzero integer less than \(m\), so can&rsquo;t be \(0\bmod m\). So there are nonzero elements without inverses, so \(\mathbb{Z}/m\mathbb{Z}\) is not a field.</p>
+<p>But what if the modulus is prime?</p>
+<p>It&rsquo;s not hard to show that the greatest common divisor of two integers is a linear combination of those two integers. There&rsquo;s a lovely proof of this:</p>
+<ul>
+<li>Consider the set of all linear combinations of \(a\) and \(b\): \(S = \{xa+yb\ |\ x\in\mathbb{Z}\ \&amp;\ y\in\mathbb{Z}\}\).</li>
+<li>Let \(g = ua+vb\) be the least positive element of \(S\).</li>
+<li>Let \(r\) be the remainder when \(a\) is divided by \(g\), so \(a=qg +r\) with \(0 \leq r < g\).</li>
+<li>So \(r = a-qg = (1-u)a-ub\) is also in \(S\) and it&rsquo;s less than \(g\). Since \(g\) is the smallest positive element of \(S\), \(r\) must be \(0\), i.e., \(g\) is a divisor of \(a\).</li>
+<li>A similar argument shows that \(g\) is a divisor of \(b\).</li>
+<li>Since any common divisor of \(a\) and \(b\) clearly divides every element of \(S\) and in particular divides \(g\), \(g\) must be the greatest common divisor of \(a\) and \(b\).</li>
+</ul>
+<p>In fact, the Euclidean algorithm, which Fi &amp; Lu learned about when investigating Fibonacci numbers, can be extended to find \(u\) and \(v\) in addition to \(g\) when given \(a\) and \(b\):</p>
+<table class='code'><caption>Extended Euclidean Algorithm</caption>
+<tr><td>\(A,\ B \leftarrow a,\ b\)
+<tr><td>\(c,\ d,\ e,\ f\quad\leftarrow\quad 1,\ 0,\ 0,\ 1\)</td><td class='center'>Throughout:\(\quad a = cA+dB,\quad b = eA+fB\)</td></tr>
+<tr><td>While \(b\neq 0\) :</td></tr>
+<tr><td>\(\quad q,\ r\quad\leftarrow\quad\text{quotient and remainder when}\ a\ \text{is divided by}\ b\)</td><td class='center'>\(a = qb+r\)</td></tr>
+<tr><td>\(\quad a,\ c,\ d,\ b,\ e,\ f\quad\leftarrow\quad b,\ e,\ f,\ r,\ c-qe,\ d-qf\)</td><td class='center'>Decrease \(b\)</td></tr>
+<tr><td>\(g,\ u,\ v\quad\leftarrow\quad a,\ c,\ d\)</td></tr>
+</table>
+<p>So, if \(p\) is prime, then \(\gcd(h,p)=1\ \text{for}\ 0 < h < p\), so \(1 = uh+vp\), so \(uh=1\bmod p\), i.e., \(u\) is the inverse of \(h\). So each nonzero element has an inverse, and so \(\mathbb{Z}/p\mathbb{Z}\) is a field, also known as the Galois field of order \(p\) or \(\text{GF}(p)\).</p>
+</div>
+</body>
+</html>
