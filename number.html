@@ -204,7 +204,7 @@ function drawnegs() {
   ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.fillText(-counter+'',x,-parseFloat(ctx.font)*.75);
+  ctx.fillText('\u2212'+counter,x,-parseFloat(ctx.font)*.75);
   counter++;
 }
 
